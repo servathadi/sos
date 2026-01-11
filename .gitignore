@@ -9,3 +9,4 @@ test_data_sos/
 *.log
 mumega_sos_stub/.DS_Store
 sos/.DS_Store
+logs/

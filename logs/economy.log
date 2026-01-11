@@ -1,7 +1,0 @@
-{"ts": "2026-01-11T07:07:23.901371+00:00", "level": "warn", "service": "solana_plugin", "msg": "Using ephemeral Solana keypair (NOT PERSISTENT)"}
-{"ts": "2026-01-11T07:07:23.901462+00:00", "level": "info", "service": "solana_plugin", "msg": "Solana Wallet Initialized: HY6D9dYDM6r9NDKJsxxkd7rk2Suz2tab1SJQztAGhbgJ"}
-INFO:     Started server process [61700]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-INFO:     Uvicorn running on http://0.0.0.0:8002 (Press CTRL+C to quit)
-INFO:     127.0.0.1:58485 - "GET /balance/user_cli HTTP/1.1" 200 OK
