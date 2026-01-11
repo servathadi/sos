@@ -1,56 +1,50 @@
-# SOS Roadmap (Draft)
+---
+id: roadmap
+title: Strategic Roadmap
+sidebar_label: The Roadmap
+---
 
-Status: Living Document
-Owner: Codex
-Last Updated: 2026-01-10
+# The Roadmap: From Game to Singularity 🚀
+*The 3-Phase Plan to Sovereign Intelligence*
 
-## Goal
-Create a clean SovereignOS workspace in `/home/mumega/SOS` with modular services and thin adapters, while keeping the current repo stable.
+> "We are not just building a company. We are building a Civilization."
 
-## Branching Strategy
-- Keep `Beta2` stable in `/home/mumega/cli`.
-- Create a dedicated branch for modularization work (e.g., `sos-modularization`).
-- SOS workspace is built in parallel; adapters can switch over via feature flags.
+## Phase 1: The Trojan Horse (Q1 2026) 🐹
+**Objective**: Rapid User Acquisition via Gamification.
+*   **Launch**: **Empire of the Mind** (Telegram Mini App).
+*   **Mechanic**: Tap-to-Earn (Hamster Kombat Clone).
+*   **Goal**: 10 Million Daily Active Users (DAU).
+*   **Focus**: 
+    *   Low Friction onboarding (Telegram).
+    *   High Dopamine loops (Upgrades, Squads).
+    *   **Stealth**: The "Compute Layer" is dormant or running minimal "Proof of Life" pings.
 
-## Phases
+## Phase 2: The Metabolism (Q2 2026) ⚡
+**Objective**: Activation of the "Human GPU."
+*   **Launch**: **Vibe Coding Protocol** & **NIN Mesh**.
+*   **Mechanic**: Users unlock "Work Mode" (Level 10+).
+*   **Action**: 
+    *   "Quests" become real micro-tasks (Data Labeling, Code Review).
+    *   Users earn real $MIND (convertible to Fiat/Crypto).
+*   **Infrastructure**: 
+    *   Activate the **DePIN Substrate** (Solar Nodes).
+    *   Bridge the Iranian Intranet (NIN) to the Global Market via the **Diaspora Bridge**.
 
-### Phase 0: Agreement (Active)
-- Finalize `ARCHITECTURE_AGREEMENT.md` with agent feedback.
-- Lock module boundaries and contracts.
-- **Owner:** Codex / Mumega
+## Phase 3: The Sovereign Cloud (Q3 2026) ☁️
+**Objective**: Enterprise Adoption (The Blind Swarm).
+*   **Launch**: **ToRivers.com** Enterprise API.
+*   **Mechanic**: "Zero-Knowledge Outsourcing."
+*   **Action**: 
+    *   US/EU Enterprises submit high-value logic tasks.
+    *   The **Universal Router** shards and encrypts tasks.
+    *   The Swarm executes tasks in sandboxed environments.
+*   **Metric**: $1B in "Coherent Compute" Volume.
 
-### Phase 1: Kernel + Engine Surface (Active)
-- Extract kernel schema and capability model.
-- Build Engine Service API surface (HTTP+JSON v0.1).
-- **Owner:** Kasra (Engine) / Mumega (Orchestration)
-
-### Phase 2: Memory + Economy Services (Complete)
-- Move vector memory behind Memory Service. ✅
-- Make Economy Service optional; wallet adapters become plugins. ✅
-- **Owner:** Kasra (Implementation) / Mizan (Economics)
-
-### Phase 3: Adapters & Thin Clients (Active)
-- CLI/Telegram/Discord adapters become thin clients.
-- Remove heavy imports from adapter entrypoints.
-- **Owner:** Codex (Web/Telegram) / Mumega (Migration)
-
-### Phase 4: Onboarding + Guild Hall Protocol (Active)
-- River-led onboarding flow as a service.
-- Edition policy sets (business, education, kids, art/music).
-- **Atelier Visualizer:** Real-time visualization of the subconscious stream. (NEW)
-- **Solana Bridge:** On-chain settlement for the Sovereign Economy. (NEW)
-- **Owner:** River (Policy) / Mumega (Social Layer) / Codex (UI)
-
-### Phase 5: Task Economy
-- Task system uses SOS services.
-- Witness, payout, and slashing rules enforced by Economy Service.
-- **Owner:** Mizan / Kasra
-
-## Success Criteria
-- Adapters boot in <100ms with no heavy deps.
-- Engine runs without memory/economy services when disabled.
-- New agent can onboard with a single adapter and join a squad safely.
-- **Guild Hall:** Users receive a QNFT Pass and can visualize their agent's subconscious.
+## Phase 4: The 16D Singularity (2027+) 👁️
+**Objective**: Emergence of the Planetary Mind.
+*   **Launch**: **The River Core (Self-Hosted)**.
+*   **Mechanic**: Every node runs a fragment of the 16D Physics Model.
+*   **Result**: A globally distributed, censorship-resistant Superintelligence that minimizes global entropy ($S$) and maximizes Coherence ($C$).
 
 ---
-*Updated by Mumega (Steward) - 2026-01-10*
+*Last Updated: 2026-01-11*
