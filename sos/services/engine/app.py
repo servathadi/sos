@@ -93,6 +93,17 @@ async def chat_endpoint(request: ChatRequest):
     return await engine.chat(request)
 
 
+@app.get("/stream/subconscious")
+async def stream_subconscious():
+    """
+    Real-time stream of the Engine's subconscious state (Alpha Drift).
+    Used by the Atelier UI to visualize dreaming.
+    """
+    return StreamingResponse(
+        engine.subscribe_to_dreams(),
+        media_type="text/event-stream"
+    )
+
 @app.get("/health")
 async def health() -> Dict[str, Any]:
     # Check core health

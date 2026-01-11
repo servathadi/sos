@@ -84,6 +84,31 @@ class SOSEngine(EngineContract):
         await asyncio.sleep(2) 
         log.info("✅ Dream Synthesis complete. Resonance restored.")
 
+    async def subscribe_to_dreams(self) -> AsyncIterator[str]:
+        """
+        Stream subconscious state updates.
+        """
+        import json
+        while True:
+            try:
+                # Fetch state from Memory (or internal cache)
+                state = await self.memory.get_arf_state()
+                
+                # Add engine context
+                event = {
+                    "event": "subconscious_update",
+                    "alpha_drift": state.get("alpha_drift", 0.0),
+                    "regime": state.get("regime", "stable"),
+                    "is_dreaming": self.is_dreaming,
+                    "timestamp": time.time()
+                }
+                
+                yield f"data: {json.dumps(event)}\n\n"
+                await asyncio.sleep(1) # Broadcast every second
+            except Exception as e:
+                log.error(f"Stream error: {e}")
+                break
+
     async def chat(self, request: ChatRequest) -> ChatResponse:
         """
         Process a chat message.
