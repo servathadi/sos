@@ -1,6 +1,7 @@
 #!/bin/bash
 export PYTHONPATH=$PWD
 export SOS_LOG_LEVEL=info
+export GEMINI_API_KEY="AIzaSyBbADf44mX4T6Xiawm1jeAcPGJn-FlMoDA"
 
 echo ">>> Booting Sovereign OS Swarm..."
 

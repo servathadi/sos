@@ -71,14 +71,17 @@ class SOSClient:
             console.print(f"[bold red]❌ Connection Failed:[/bold red] {e}")
             return False
 
-    async def chat(self, message: str, stream: bool = True):
+    async def chat(self, message: str, model: str = None, stream: bool = True):
         url = f"{self.host}/chat"
+        # If no model provided, engine will use default
         payload = {
             "message": message,
             "agent_id": self.agent_id,
             "stream": stream,
             "tools_enabled": True
         }
+        if model:
+            payload["model"] = model
 
         try:
             if stream:
@@ -133,6 +136,7 @@ async def main():
     parser.add_argument("args", nargs="*", help="Arguments for the command")
     parser.add_argument("--host", default=DEFAULT_HOST, help="SOS Engine URL")
     parser.add_argument("--agent", default=AGENT_ID, help="Agent ID")
+    parser.add_argument("--model", default=None, help="AI Model ID")
     
     args = parser.parse_args()
     
@@ -146,7 +150,7 @@ async def main():
             console.print("[red]Please provide a message.[/red]")
             return
         message = " ".join(args.args)
-        await client.chat(message)
+        await client.chat(message, model=args.model)
         
     elif args.command == "wallet":
         await client.get_balance()

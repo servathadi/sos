@@ -21,55 +21,60 @@ class ModelAdapter(ABC):
     async def generate_stream(self, prompt: str, system_prompt: str = None) -> AsyncIterator[str]:
         pass
 
+from sos.kernel.rotator import KeyRotator
+
 class GeminiAdapter(ModelAdapter):
     """
-    Adapter for Google Gemini (via google-genai).
+    Adapter for Google Gemini (via google-genai) with Auto-Rotation.
     """
     def __init__(self, api_key: str = None):
-        self.api_key = api_key or os.getenv("GEMINI_API_KEY")
-        print(f"DEBUG: GEMINI_API_KEY present? {bool(self.api_key)}")
-        if not self.api_key:
-            print(f"DEBUG: Env Keys: {[k for k in os.environ.keys() if 'GEMINI' in k]}")
-        
+        self.rotator = KeyRotator("gemini")
         self.client = None
-        
-        log.info(f"Initializing Gemini Adapter with key: {self.api_key[:5] if self.api_key else 'None'}...")
-        
-        if self.api_key:
+        self._init_client()
+
+    def _init_client(self):
+        key = self.rotator.get_key()
+        if key:
             try:
                 from google import genai
-                self.client = genai.Client(api_key=self.api_key)
-                print("DEBUG: Gemini Client Created Successfully")
-            except ImportError as e:
-                print(f"DEBUG: ImportError: {e}")
-                log.warning(f"google-genai not installed: {e}")
-            except Exception as e:
-                print(f"DEBUG: Client Init Error: {e}")
-                log.error(f"Client Init Error: {e}")
-        else:
-            log.warning("No GEMINI_API_KEY found.")
+                self.client = genai.Client(api_key=key)
+            except ImportError:
+                log.warn("google-genai not installed.")
 
     def get_model_id(self) -> str:
-        return "gemini-2.0-flash-exp"
+        # Default to Gemini 3 Flash Preview as requested
+        return "gemini-3-flash-preview"
 
     async def generate(self, prompt: str, system_prompt: str = None, tools: List[Dict] = None) -> str:
         if not self.client:
             return "Error: Gemini client not initialized"
         
-        # TODO: Implement full generation logic with tools
-        # For Phase 1, basic text
-        try:
-            response = self.client.models.generate_content(
-                model=self.get_model_id(),
-                contents=prompt,
-                config={"system_instruction": system_prompt} if system_prompt else None
-            )
-            return response.text
-        except Exception as e:
-            log.error(f"Gemini generation failed: {e}")
-            raise
+        # Implementation of rotation logic on 429
+        attempts = 0
+        max_attempts = self.rotator.key_count or 1
+
+        while attempts < max_attempts:
+            try:
+                response = self.client.models.generate_content(
+                    model=self.get_model_id(),
+                    contents=prompt,
+                    config={"system_instruction": system_prompt} if system_prompt else None
+                )
+                return response.text
+            except Exception as e:
+                if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                    log.warn(f"Rate limit hit on key {self.rotator.current_index}. Rotating...")
+                    self.rotator.rotate()
+                    self._init_client()
+                    attempts += 1
+                    continue
+                log.error(f"Gemini generation failed: {e}")
+                raise
+        
+        return "Error: All Gemini keys exhausted (Rate Limit)."
 
     async def generate_stream(self, prompt: str, system_prompt: str = None) -> AsyncIterator[str]:
+        # TODO: Implement rotation for streaming
         if not self.client:
             yield "Error: Gemini client not initialized"
             return

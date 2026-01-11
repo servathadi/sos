@@ -35,9 +35,9 @@ class SOSEngine(EngineContract):
         # Initialize Model Adapters
         self.models = {
             "sos-mock-v1": MockAdapter(),
-            "gemini-2.0": GeminiAdapter(),
+            "gemini-3-flash-preview": GeminiAdapter(),
         }
-        self.default_model = "sos-mock-v1"
+        self.default_model = "gemini-3-flash-preview"
         
         log.info("SOSEngine initialized", 
                  memory_url=self.config.memory_url,
