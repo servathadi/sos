@@ -69,7 +69,7 @@ class MemoryCore:
                     best_score = 0.5 
                 
                 state = self.monitor.update(best_score)
-                log.debug(f"🧠 Alpha Drift: {state.alpha_norm:.4f} ({state.regime})")
+                log.info(f"🧠 ARF State Update | Score: {best_score:.4f} | Alpha: {state.alpha_norm:.4f} | Regime: {state.regime}")
                 
             except Exception as e:
                 log.warn(f"Coherence check failed: {e}")
