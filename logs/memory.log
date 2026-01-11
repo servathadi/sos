@@ -1,9 +1,9 @@
-{"ts": "2026-01-11T06:28:52.147162+00:00", "level": "info", "service": "memory_core", "msg": "Initializing Memory Core (SQLite + ChromaDB)"}
-INFO:     Started server process [51636]
+{"ts": "2026-01-11T06:42:08.488119+00:00", "level": "info", "service": "memory_core", "msg": "Initializing Memory Core (SQLite + ChromaDB)"}
+INFO:     Started server process [52841]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
-INFO:     127.0.0.1:55215 - "GET /health HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:55985 - "GET /health HTTP/1.1" 500 Internal Server Error
 ERROR:    Exception in ASGI application
 Traceback (most recent call last):
   File "/Users/hadi/Development/Mumega/sos/venv/lib/python3.14/site-packages/uvicorn/protocols/http/h11_impl.py", line 410, in run_asgi

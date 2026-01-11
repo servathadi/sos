@@ -41,6 +41,10 @@ echo "✅ Tools Service (8003)"
 nohup $PYTHON_CMD -m uvicorn sos.services.identity.app:app --host 0.0.0.0 --port 8004 > logs/identity.log 2>&1 &
 echo "✅ Identity Service (8004)"
 
+# 5. Atelier (8005)
+nohup $PYTHON_CMD -m uvicorn sos.services.atelier.app:app --host 0.0.0.0 --port 8005 > logs/atelier.log 2>&1 &
+echo "✅ Atelier Service (8005)"
+
 # 5. Engine (8020)
 # Needs to wait a bit for others
 sleep 2

@@ -1,9 +1,9 @@
 google-genai not installed.
-{"ts": "2026-01-11T06:28:54.221865+00:00", "level": "info", "service": "engine_core", "msg": "SOSEngine initialized", "extra": {"memory_url": "http://localhost:8001", "tools_url": "http://localhost:8003"}}
-INFO:     Started server process [51648]
+{"ts": "2026-01-11T06:42:10.430376+00:00", "level": "info", "service": "engine_core", "msg": "SOSEngine initialized", "extra": {"memory_url": "http://localhost:8001", "tools_url": "http://localhost:8003"}}
+INFO:     Started server process [52859]
 INFO:     Waiting for application startup.
-{"ts": "2026-01-11T06:28:54.233671+00:00", "level": "info", "service": "engine", "msg": "\ud83e\udd16 Engine Subconscious Loops (Dreams) started."}
-{"ts": "2026-01-11T06:28:54.233718+00:00", "level": "info", "service": "engine_core", "msg": "\ud83c\udf0c Subconscious monitoring Alpha Drift for resonance..."}
-{"ts": "2026-01-11T06:28:54.241213+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 500 Internal Server Error"}
+{"ts": "2026-01-11T06:42:10.443238+00:00", "level": "info", "service": "engine", "msg": "\ud83e\udd16 Engine Subconscious Loops (Dreams) started."}
+{"ts": "2026-01-11T06:42:10.443285+00:00", "level": "info", "service": "engine_core", "msg": "\ud83c\udf0c Subconscious monitoring Alpha Drift for resonance..."}
+{"ts": "2026-01-11T06:42:10.446596+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 500 Internal Server Error"}
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8020 (Press CTRL+C to quit)
