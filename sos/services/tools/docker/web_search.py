@@ -17,6 +17,23 @@ try:
 except ImportError:
     DDGS_AVAILABLE = False
 
+class WebSearchTool:
+    """Wrapper class for web search functionality."""
+    
+    async def search(self, query: str, count: int = 5, provider: str = "auto") -> Dict[str, Any]:
+        """Async-compatible search method."""
+        # Note: These search functions are currently synchronous but we wrap them in an async method
+        # and we could use run_in_executor if they became bottlenecks.
+        
+        tavily_key = os.getenv("TAVILY_API_KEY")
+        
+        if provider == "tavily" or (provider == "auto" and tavily_key and TAVILY_AVAILABLE):
+            if not tavily_key:
+                return {"error": "Tavily key missing"}
+            return search_tavily(query, count, tavily_key)
+        
+        return search_duckduckgo(query, count)
+
 def search_tavily(query: str, count: int, key: str) -> Dict[str, Any]:
     if not TAVILY_AVAILABLE:
         return {"error": "Tavily library not installed"}

@@ -1,6 +1,13 @@
-INFO:     Started server process [1792736]
+{"ts": "2026-01-11T06:28:52.201105+00:00", "level": "warn", "service": "solana_plugin", "msg": "Using ephemeral Solana keypair (NOT PERSISTENT)"}
+{"ts": "2026-01-11T06:28:52.201229+00:00", "level": "info", "service": "solana_plugin", "msg": "Solana Wallet Initialized: 7fB3XSYU8ENNbU1VgSQ1DpSftjCDPn6JnuhhJByCc2df"}
+INFO:     Started server process [51637]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
-ERROR:    [Errno 98] error while attempting to bind on address ('0.0.0.0', 8002): address already in use
-INFO:     Waiting for application shutdown.
-INFO:     Application shutdown complete.
+INFO:     Uvicorn running on http://0.0.0.0:8002 (Press CTRL+C to quit)
+INFO:     127.0.0.1:55217 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55217 - "GET /balance/admin HTTP/1.1" 200 OK
+{"ts": "2026-01-11T06:28:54.797791+00:00", "level": "info", "service": "solana_plugin", "msg": "Logging QNFT Proof for URI: test_metadata_uri_v1"}
+{"ts": "2026-01-11T06:28:54.979063+00:00", "level": "info", "service": "solana_plugin", "msg": "Sending 1e-06 SOL tx to 7fB3XSYU8ENNbU1VgSQ1DpSftjCDPn6JnuhhJByCc2df..."}
+{"ts": "2026-01-11T06:28:55.019048+00:00", "level": "error", "service": "solana_plugin", "msg": "Transfer failed", "extra": {"error": "SendTransactionPreflightFailureMessage { message: \"Transaction simulation failed: Attempt to debit an account but found no record of a prior credit.\", data: RpcSimulateTransactionResult(RpcSimulateTransactionResult { err: Some(UiTransactionError(AccountNotFound)), logs: Some([]), accounts: None, units_consumed: Some(0), loaded_accounts_data_size: Some(0), return_data: None, inner_instructions: None, replacement_blockhash: None, fee: None, pre_balances: None, post_balances: None, pre_token_balances: None, post_token_balances: None, loaded_addresses: None }) }"}}
+{"ts": "2026-01-11T06:28:55.019146+00:00", "level": "error", "service": "economy", "msg": "Mint proof failed", "extra": {"error": "SendTransactionPreflightFailureMessage { message: \"Transaction simulation failed: Attempt to debit an account but found no record of a prior credit.\", data: RpcSimulateTransactionResult(RpcSimulateTransactionResult { err: Some(UiTransactionError(AccountNotFound)), logs: Some([]), accounts: None, units_consumed: Some(0), loaded_accounts_data_size: Some(0), return_data: None, inner_instructions: None, replacement_blockhash: None, fee: None, pre_balances: None, post_balances: None, pre_token_balances: None, post_token_balances: None, loaded_addresses: None }) }"}}
+INFO:     127.0.0.1:55217 - "POST /mint_proof HTTP/1.1" 500 Internal Server Error

@@ -36,6 +36,15 @@ class ToolsClient(BaseHTTPClient):
             }
             return self._request("POST", "/tools/web_search", json=payload).json()
             
+        if tool_name == "deep_research":
+            # Map args to DeepResearchRequest
+            payload = {
+                "query": args.get("query"),
+                "count": args.get("count", 3),
+                "depth": args.get("depth", "standard")
+            }
+            return self._request("POST", "/tools/deep_research", json=payload).json()
+            
         # Fallback to generic execute (if server supports it later)
         return self._request("POST", "/execute", json={"tool_name": tool_name, "arguments": args}).json()
 

@@ -21,6 +21,11 @@ class WebSearchRequest(BaseModel):
     count: int = 5
     provider: str = "auto"
 
+class DeepResearchRequest(BaseModel):
+    query: str
+    count: int = 3
+    depth: str = "standard" # standard, deep
+
 
 # IMAGE_NAME = "sos-tools:latest" # Docker disabled for native mode
 
@@ -43,6 +48,11 @@ async def run_native_tool(script: str, args: List[str], env: Dict[str, str]) -> 
         # Merge current env with tool env (to get PATH, etc) but allow overrides
         full_env = os.environ.copy()
         full_env.update(env)
+        
+        # Ensure the script directory is in PYTHONPATH so tools can import each other
+        script_dir = os.path.dirname(script_path)
+        existing_pythonpath = full_env.get("PYTHONPATH", "")
+        full_env["PYTHONPATH"] = f"{script_dir}:{existing_pythonpath}"
 
         proc = await asyncio.create_subprocess_exec(
             sys.executable, script_path, *args,
@@ -53,10 +63,25 @@ async def run_native_tool(script: str, args: List[str], env: Dict[str, str]) -> 
         
         stdout, stderr = await proc.communicate()
         
-        if proc.returncode != 0:
-            return {"error": f"Tool execution failed: {stderr.decode()}"}
+        stdout_str = stdout.decode()
+        stderr_str = stderr.decode()
+        
+        if stderr_str:
+            log.warn(f"Tool {script} stderr: {stderr_str}")
             
-        return json.loads(stdout.decode())
+        if proc.returncode != 0:
+            log.error(f"Tool {script} failed with code {proc.returncode}")
+            # Try to see if there's a JSON error in stdout
+            try:
+                error_obj = json.loads(stdout_str)
+                if "error" in error_obj:
+                    return error_obj
+            except:
+                pass
+            return {"error": f"Tool execution failed: {stderr_str}"}
+            
+        log.debug(f"Tool {script} output: {stdout_str}")
+        return json.loads(stdout_str)
         
     except Exception as e:
         log.error("Native execution error", error=str(e))
@@ -79,6 +104,32 @@ async def web_search(req: WebSearchRequest):
     result = await run_native_tool(
         script="web_search.py",
         args=[req.query, "--count", str(req.count), "--provider", req.provider],
+        env=env_vars
+    )
+    
+    return result
+
+@app.post("/tools/deep_research")
+async def deep_research(req: DeepResearchRequest):
+    """
+    Execute a deep research (Native Mode).
+    """
+    # 1. Fetch Key from Kernel/Env
+    tavily_key = os.getenv("TAVILY_API_KEY")
+    
+    env_vars = {}
+    if tavily_key:
+        env_vars["TAVILY_API_KEY"] = tavily_key
+        
+    # 2. Run Native
+    # Map depth to count if needed, or pass it directly if script supports it
+    count = req.count
+    if req.depth == "deep":
+        count = max(count, 5)
+        
+    result = await run_native_tool(
+        script="deep_research.py",
+        args=[req.query, "--count", str(count)],
         env=env_vars
     )
     

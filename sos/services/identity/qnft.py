@@ -90,13 +90,11 @@ class QNFTMinter:
         }
 
         # 3. On-Chain Minting (via Economy Service)
-        # We call the Economy Service execution endpoint to handle the blockchain transaction
-        # This keeps Identity abstract from Solana details.
         try:
-            # TODO: Implement 'mint_qnft' endpoint on Economy Service or use generic execute
-            # For now, we simulate the interaction
-            # tx_sig = await self.economy.execute("mint_qnft", {"metadata_uri": str(metadata_path), "token_id": token_id})
-            tx_sig = "simulated_tx_hash_solana_devnet" 
+            # Call the Economy Service for an on-chain proof
+            # This logs the metadata path to the Solana blockchain
+            resp = await self.economy.mint_proof(metadata_uri=str(metadata_path))
+            tx_sig = resp.get("signature")
             receipt["tx_hash"] = tx_sig
             log.info(f"🚀 QNFT Protocol Completed. Tx: {tx_sig}")
         except Exception as e:

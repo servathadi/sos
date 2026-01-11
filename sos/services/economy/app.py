@@ -51,6 +51,21 @@ async def credit(req: TransactionRequest):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+class MintProofRequest(BaseModel):
+    metadata_uri: str
+
+@app.post("/mint_proof")
+async def mint_proof(req: MintProofRequest):
+    """
+    Log an on-chain proof for a QNFT.
+    """
+    try:
+        signature = await wallet.mint_proof(req.metadata_uri)
+        return {"signature": signature, "status": "confirmed"}
+    except Exception as e:
+        log.error("Mint proof failed", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/debit", response_model=BalanceResponse)
 async def debit(req: TransactionRequest):
     try:

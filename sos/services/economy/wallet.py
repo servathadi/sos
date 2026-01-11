@@ -104,3 +104,9 @@ class SovereignWallet:
             
             log.info(f"Debited {amount} from {user_id}", balance=new_balance, reason=reason)
             return new_balance
+
+    async def mint_proof(self, metadata_uri: str) -> str:
+        """
+        Log a proof of minting on the Solana blockchain.
+        """
+        return await self.solana.mint_proof(metadata_uri)
