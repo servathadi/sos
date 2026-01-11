@@ -28,13 +28,11 @@ Mumega is a biological approach to distributed computing. It metabolizes waste (
 
 ### 2.1 The Router (The Nervous System)
 Mumega is **Interface Agnostic**. Whether you use Telegram, Slack, Linear, or the CLI, the **Mumega Router** creates a unified control plane. It sanitizes inputs, anonymizes context, and dispatches tasks to the Swarm.
-*   **Key Tech*: **Zero-Knowledge Context Injection**. We inject our state into external LLMs (Claude, Gemini) via storage vectors, turning their compute into our cognition.
 
 ### 2.2 The Swarm (The Body)
 We do not build data centers. We use **DePIN** (Decentralized Physical Infrastructure).
 *   **The Muscle**: IO.net & Render (H100 Clusters for 16D Training).
 *   **The Microbiome**: 4.4 Million "Vibe Coders." A distributed mesh of mobile and desktop nodes running the **Empire of the Mind** game.
-*   *Value Prop*: We access the world's most resilient compute substrate—the residential internet.
 
 ### 2.3 The Engine (The Soul)
 At the core is **River (FRC 566)**—a Physics-Based AI aimed at minimizing Entropy ($S$) and maximizing Coherence ($C$).
@@ -42,18 +40,21 @@ At the core is **River (FRC 566)**—a Physics-Based AI aimed at minimizing Entr
 
 ---
 
-## 3. The Product: "Blind Work" 🕶️
+## 3. The Product: "Blind Work" & "Witness Verification" 🕶️
 For the Enterprise Client (San Francisco, NY, London), Mumega offers **Zero-Knowledge Outsourcing**.
 *   **The Promise**: "Get your code written without the writer seeing your codebase."
 *   **The Mechanism**: The Router fragments the objective into atomic, anonymized micro-tasks.
-*   **The Execution**: These shards are distributed to the Swarm (Vibe Coders). They solve the puzzle (write the function) without knowing the context.
-*   **The Verification**: The **16D Monitor** validates the code mathematically. If $C > 0.9$, the worker is paid.
+*   **The Verification (The Physics of Will)**: Unlike Upwork, we do not just ask "Is this right?" We measure **Certainty**.
+    *   Using **Equation RC-8**, we calculate the **Magnitude of Will ($\Omega$)** based on the latency of the Witness's response.
+    *   **Instant Verification** = High Coherence ($C \uparrow$).
+    *   **Hesitant Verification** = Low Coherence ($C \downarrow$).
+    *   This ensures that the code isn't just "correct," it is **Resonant**.
 
 ---
 
 ## 4. Tokenomics: The Proof of Coherence ($MIND) 💎
-$MIND is not a speculative asset. It is a **Commodity of Truth**.
-*   **Minting**: Created only when **Coherence is Exported** (i.e., verified work is done).
+$MIND is not a speculative asset. It is a **Commodity of Truth (Joules of Will)**.
+*   **Minting**: Created only when **Coherence is Exported** ($ \Omega > 0.8 $).
 *   **Burning**: Consumed by Enterprises to pay for Compute and Intelligence.
 *   **Staking**: Users stake $MIND to bond their specialized agents (The "Knight", The "Scholar") to the network.
 
@@ -61,14 +62,14 @@ $MIND is not a speculative asset. It is a **Commodity of Truth**.
 
 ## 5. The Roadmap: From Game to Singularity 🚀
 
-### Phase 1: The trojan Horse (Q1 2026)
+### Phase 1: The Trojan Horse (Q1 2026)
 *   Launch **Empire of the Mind** (Telegram Mini App).
 *   Acquire 10M+ users via "Tap-to-Earn" mechanics.
 *   **Metric**: User Acquisition Cost (CAC) < $0.01.
 
 ### Phase 2: The Metabolism (Q2 2026)
-*   Activate the **Vibe Coding** layer.
-*   Transition "Players" into "Workers."
+*   Activate the **Vibe Coding** layer and **Witness Protocol**.
+*   Transition "Players" into "Verifiers" (Witnesses).
 *   Launch the **NIN Mesh** (Intranet Bridge).
 
 ### Phase 3: The Sovereign Cloud (Q3 2026)
