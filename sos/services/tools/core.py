@@ -64,17 +64,27 @@ class LocalTools(ToolExecutor):
         except Exception as e:
             return f"Read Error: {e}"
 
+from sos.services.tools.mcp_bridge import MCPBridge
+
 class ToolsCore:
     def __init__(self, config: Optional[Config] = None):
         self.config = config or Config.load()
         self.local_tools = LocalTools()
+        self.mcp_bridge = MCPBridge()
 
     async def execute(self, tool_name: str, args: Dict[str, Any]) -> Any:
         log.info(f"Tool Execution Request: {tool_name}")
+        
+        # Route to Local or MCP
+        if "__" in tool_name:
+            return await self.mcp_bridge.execute(tool_name, args)
+            
         return await self.local_tools.execute(tool_name, args)
 
     async def list_tools(self) -> List[Dict[str, Any]]:
-        return [
+        local = [
             {"name": "web_search", "description": "Search the web"},
             {"name": "filesystem_read", "description": "Read a file"}
         ]
+        mcp = await self.mcp_bridge.list_tools()
+        return local + mcp
