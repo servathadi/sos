@@ -6,6 +6,7 @@ import time
 from sos.kernel import Config
 from sos.observability.logging import get_logger
 from sos.services.memory.backends import SQLiteMetadataStore
+from sos.services.memory.vector_store import ChromaBackend
 
 log = get_logger("memory_core")
 
@@ -19,7 +20,7 @@ class MemoryItem:
 class MemoryCore:
     """
     The Hippocampus of the Sovereign OS.
-    Manages Vector Storage (Short-term) and Mirror Sync (Long-term).
+    Manages Vector Storage (ChromaDB) and Metadata (SQLite).
     """
     def __init__(self, config: Optional[Config] = None):
         self.config = config or Config.load()
@@ -29,18 +30,18 @@ class MemoryCore:
 
     def _init_storage(self):
         """
-        Lazy load heavy dependencies to keep boot time fast.
+        Lazy load storage backends.
         """
         try:
             # Persistent Metadata
             self.metadata_store = SQLiteMetadataStore()
             
-            # Mocking the heavy load for Phase 1 to ensure stability
-            # In Phase 2, this will import chromadb and sentence_transformers
-            log.info("Initializing Memory Core (SQLite + Mock Vector)")
-            self.vector_store = {} 
+            # Vector Backend (Lazy Loaded internally)
+            self.vector_store = ChromaBackend()
+            log.info("Initializing Memory Core (SQLite + ChromaDB)")
+            
         except Exception as e:
-            log.error("Failed to initialize vector store", error=str(e))
+            log.error("Failed to initialize storage", error=str(e))
 
     async def add(self, content: str, metadata: Dict[str, Any] = None) -> str:
         """
@@ -49,16 +50,16 @@ class MemoryCore:
         item_id = f"mem_{int(time.time()*1000)}"
         log.info(f"Encoding memory: {content[:50]}...")
         
+        metadata = metadata or {}
+        
         # 1. Store Metadata (Persistent)
         if self.metadata_store:
-            self.metadata_store.add(item_id, metadata or {})
+            self.metadata_store.add(item_id, metadata)
 
-        # 2. Store Vector (Mock)
-        self.vector_store[item_id] = {
-            "content": content,
-            "metadata": metadata or {},
-            "timestamp": time.time()
-        }
+        # 2. Store Vector (Real)
+        if self.vector_store:
+            self.vector_store.add(item_id, content, metadata)
+            
         return item_id
 
     async def search(self, query: str, limit: int = 5) -> List[MemoryItem]:
@@ -67,26 +68,21 @@ class MemoryCore:
         """
         log.info(f"Searching memory for: {query}")
         
-        # Mock retrieval: return recent items
-        # In Phase 2, this uses vector similarity
         results = []
-        
-        # Use Metadata Store for rich filtering if needed
-        # For now, we iterate the mock vector store
-        for mid, data in list(self.vector_store.items())[-limit:]:
-            # Hydrate with persistent metadata if available
-            meta = data["metadata"]
-            if self.metadata_store:
-                stored_meta = self.metadata_store.get(mid)
-                if stored_meta:
-                    meta = stored_meta.raw_metadata
-
-            results.append(MemoryItem(
-                id=mid,
-                content=data["content"],
-                metadata=meta,
-                score=0.9
-            ))
+        if self.vector_store:
+            vector_results = self.vector_store.search(query, limit)
+            
+            # Map back to internal MemoryItem
+            for v_item in vector_results:
+                # Hydrate with richer metadata from SQLite if needed
+                # For now, we trust the vector metadata
+                results.append(MemoryItem(
+                    id=v_item.id,
+                    content=v_item.content,
+                    metadata=v_item.metadata,
+                    score=v_item.score
+                ))
+                
         return results
 
     async def get_arf_state(self) -> Dict[str, Any]:
