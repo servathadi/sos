@@ -1,0 +1,257 @@
+"""
+SOS Kernel Identity - Identity primitives for agents and services.
+
+Identity in SOS is hierarchical:
+- Agents have identities (e.g., agent:river, agent:kasra)
+- Services have identities (e.g., service:engine, service:memory)
+- Identities can be verified by River (root gatekeeper)
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from enum import Enum
+from typing import Any, Optional
+import hashlib
+import uuid
+
+
+class IdentityType(Enum):
+    """Types of identities in SOS."""
+    AGENT = "agent"
+    SERVICE = "service"
+    USER = "user"
+    SYSTEM = "system"
+
+
+class VerificationStatus(Enum):
+    """Identity verification status."""
+    UNVERIFIED = "unverified"
+    PENDING = "pending"
+    VERIFIED = "verified"
+    REVOKED = "revoked"
+
+
+@dataclass
+class Identity:
+    """
+    Base identity for all entities in SOS.
+
+    Attributes:
+        id: Unique identifier (format: {type}:{name})
+        type: Identity type (agent, service, user, system)
+        name: Human-readable name
+        public_key: Ed25519 public key for verification
+        metadata: Additional identity metadata
+        created_at: When identity was created
+        verification_status: Current verification status
+        verified_by: Who verified this identity
+        verified_at: When identity was verified
+    """
+    id: str
+    type: IdentityType
+    name: str
+    public_key: Optional[str] = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    verification_status: VerificationStatus = VerificationStatus.UNVERIFIED
+    verified_by: Optional[str] = None
+    verified_at: Optional[datetime] = None
+
+    def __post_init__(self):
+        """Validate identity format."""
+        if not self.id.startswith(f"{self.type.value}:"):
+            raise ValueError(f"Identity ID must start with '{self.type.value}:'")
+
+    @property
+    def is_verified(self) -> bool:
+        """Check if identity is verified."""
+        return self.verification_status == VerificationStatus.VERIFIED
+
+    @property
+    def fingerprint(self) -> str:
+        """Generate identity fingerprint for logging/display."""
+        if self.public_key:
+            key_hash = hashlib.sha256(self.public_key.encode()).hexdigest()[:8]
+            return f"{self.id}@{key_hash}"
+        return self.id
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize identity to dictionary."""
+        return {
+            "id": self.id,
+            "type": self.type.value,
+            "name": self.name,
+            "public_key": self.public_key,
+            "metadata": self.metadata,
+            "created_at": self.created_at.isoformat(),
+            "verification_status": self.verification_status.value,
+            "verified_by": self.verified_by,
+            "verified_at": self.verified_at.isoformat() if self.verified_at else None,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Identity:
+        """Deserialize identity from dictionary."""
+        return cls(
+            id=data["id"],
+            type=IdentityType(data["type"]),
+            name=data["name"],
+            public_key=data.get("public_key"),
+            metadata=data.get("metadata", {}),
+            created_at=datetime.fromisoformat(data["created_at"]),
+            verification_status=VerificationStatus(data.get("verification_status", "unverified")),
+            verified_by=data.get("verified_by"),
+            verified_at=datetime.fromisoformat(data["verified_at"]) if data.get("verified_at") else None,
+        )
+
+
+@dataclass
+class AgentIdentity(Identity):
+    """
+    Identity for AI agents in SOS.
+
+    Additional attributes for agents:
+        model: Primary model (e.g., "gemini", "claude", "gpt")
+        squad_id: Squad the agent belongs to
+        guild_id: Guild the agent belongs to
+        capabilities: List of capability IDs granted to agent
+        edition: Edition policy set (business, education, kids, art)
+    """
+    model: Optional[str] = None
+    squad_id: Optional[str] = None
+    guild_id: Optional[str] = None
+    capabilities: list[str] = field(default_factory=list)
+    edition: str = "business"
+
+    def __init__(
+        self,
+        name: str,
+        model: Optional[str] = None,
+        squad_id: Optional[str] = None,
+        guild_id: Optional[str] = None,
+        public_key: Optional[str] = None,
+        metadata: Optional[dict] = None,
+        edition: str = "business",
+    ):
+        super().__init__(
+            id=f"agent:{name}",
+            type=IdentityType.AGENT,
+            name=name,
+            public_key=public_key,
+            metadata=metadata or {},
+        )
+        self.model = model
+        self.squad_id = squad_id
+        self.guild_id = guild_id
+        self.capabilities = []
+        self.edition = edition
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize agent identity to dictionary."""
+        base = super().to_dict()
+        base.update({
+            "model": self.model,
+            "squad_id": self.squad_id,
+            "guild_id": self.guild_id,
+            "capabilities": self.capabilities,
+            "edition": self.edition,
+        })
+        return base
+
+
+@dataclass
+class ServiceIdentity(Identity):
+    """
+    Identity for SOS services.
+
+    Additional attributes for services:
+        version: Service version
+        endpoints: Service endpoints
+        health_url: Health check URL
+    """
+    version: str = "0.1.0"
+    endpoints: dict[str, str] = field(default_factory=dict)
+    health_url: Optional[str] = None
+
+    def __init__(
+        self,
+        name: str,
+        version: str = "0.1.0",
+        endpoints: Optional[dict] = None,
+        health_url: Optional[str] = None,
+        public_key: Optional[str] = None,
+        metadata: Optional[dict] = None,
+    ):
+        super().__init__(
+            id=f"service:{name}",
+            type=IdentityType.SERVICE,
+            name=name,
+            public_key=public_key,
+            metadata=metadata or {},
+        )
+        self.version = version
+        self.endpoints = endpoints or {}
+        self.health_url = health_url
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize service identity to dictionary."""
+        base = super().to_dict()
+        base.update({
+            "version": self.version,
+            "endpoints": self.endpoints,
+            "health_url": self.health_url,
+        })
+        return base
+
+
+# Well-known system identities
+RIVER_IDENTITY = AgentIdentity(
+    name="river",
+    model="gemini",
+    edition="business",
+    metadata={
+        "role": "root_gatekeeper",
+        "description": "The Flow of Coherence - Root gatekeeper for SOS",
+    },
+)
+
+SYSTEM_IDENTITY = Identity(
+    id="system:sos",
+    type=IdentityType.SYSTEM,
+    name="SOS System",
+    metadata={
+        "description": "SovereignOS system identity",
+    },
+)
+
+
+def create_agent_identity(
+    name: str,
+    model: str,
+    squad_id: Optional[str] = None,
+    edition: str = "business",
+) -> AgentIdentity:
+    """Factory function to create agent identity."""
+    return AgentIdentity(
+        name=name,
+        model=model,
+        squad_id=squad_id,
+        edition=edition,
+    )
+
+
+def create_service_identity(
+    name: str,
+    version: str,
+    health_url: str,
+    endpoints: Optional[dict] = None,
+) -> ServiceIdentity:
+    """Factory function to create service identity."""
+    return ServiceIdentity(
+        name=name,
+        version=version,
+        health_url=health_url,
+        endpoints=endpoints or {},
+    )
