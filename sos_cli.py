@@ -106,24 +106,20 @@ class SOSClient:
             console.print(f"[bold red]Chat Error:[/bold red] {e}")
 
     async def get_balance(self):
-        # Requires Economy Service on separate port or routed via Engine
-        # For Phase 3, we assume Engine routes it, or we hit Economy directly
-        # Let's try direct economy port 8002 (standard) or via Engine router if implemented
-        # Currently engine app.py doesn't route balance, so we hit economy directly for demo
+        # Routed via Engine Gateway (Port 8020)
         try:
-            # TODO: Add routing to Engine for this
-            console.print("[dim]Checking Economy Service directly (Port 8002)...[/dim]")
-            resp = await self.client.get(f"http://localhost:8002/balance/{self.agent_id}")
+            console.print(f"[dim]Checking Wallet via Engine ({self.host})...[/dim]")
+            resp = await self.client.get(f"{self.host}/wallet/balance/{self.agent_id}")
+            resp.raise_for_status()
             data = resp.json()
             console.print(Panel(f"[bold gold1]{data.get('balance')} RU[/bold gold1]", title="Wallet Balance"))
-        except:
-            console.print("[yellow]Economy Service unreachable.[/yellow]")
+        except Exception as e:
+            console.print(f"[yellow]Wallet unreachable via Engine: {e}[/yellow]")
 
     async def mint_identity(self, role: str):
+        # Routed via Engine Gateway (Port 8020)
         try:
-            # Identity Service on 8004? Or routed?
-            # We haven't built the router yet, so direct hit for demo
-            url = "http://localhost:8004/mint"
+            url = f"{self.host}/identity/mint"
             resp = await self.client.post(url, json={"agent_id": self.agent_id, "role": role})
             data = resp.json()
             console.print(Panel(json.dumps(data, indent=2), title="🆔 Guild Pass Minted", border_style="cyan"))

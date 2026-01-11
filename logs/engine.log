@@ -1,28 +1,23 @@
 google-genai not installed.
-{"ts": "2026-01-11T07:04:12.952869+00:00", "level": "info", "service": "engine_core", "msg": "SOSEngine initialized", "extra": {"memory_url": "http://localhost:8001", "tools_url": "http://localhost:8003"}}
-INFO:     Started server process [59710]
+{"ts": "2026-01-11T07:07:25.818648+00:00", "level": "info", "service": "engine_core", "msg": "SOSEngine initialized", "extra": {"memory_url": "http://localhost:8001", "tools_url": "http://localhost:8003"}}
+INFO:     Started server process [61721]
 INFO:     Waiting for application startup.
-{"ts": "2026-01-11T07:04:12.963651+00:00", "level": "info", "service": "engine", "msg": "\ud83e\udd16 Engine Subconscious Loops (Dreams) started."}
-{"ts": "2026-01-11T07:04:12.963692+00:00", "level": "info", "service": "engine_core", "msg": "\ud83c\udf0c Subconscious monitoring Alpha Drift for resonance..."}
-{"ts": "2026-01-11T07:04:12.966138+00:00", "level": "info", "service": "engine_core", "msg": "\u2728 Executing Deep Dream Synthesis..."}
+{"ts": "2026-01-11T07:07:25.830645+00:00", "level": "info", "service": "engine", "msg": "\ud83e\udd16 Engine Subconscious Loops (Dreams) started."}
+{"ts": "2026-01-11T07:07:25.830686+00:00", "level": "info", "service": "engine_core", "msg": "\ud83c\udf0c Subconscious monitoring Alpha Drift for resonance..."}
+{"ts": "2026-01-11T07:07:25.833326+00:00", "level": "info", "service": "engine_core", "msg": "\u2728 Executing Deep Dream Synthesis..."}
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8020 (Press CTRL+C to quit)
-{"ts": "2026-01-11T07:04:14.967566+00:00", "level": "info", "service": "engine_core", "msg": "\u2705 Dream Synthesis complete. Resonance restored."}
-{"ts": "2026-01-11T07:04:16.650109+00:00", "level": "info", "service": "capability_guard", "msg": "FMAAP Validation PASSED", "trace_id": "7e93bba2-b274-4c7c-b3ad-01518d703ad1", "span_id": "e248b97e", "extra": {"score": 0.9400000000000001}}
-{"ts": "2026-01-11T07:04:16.652664+00:00", "level": "error", "service": "engine_core", "msg": "Stream error: name 'time' is not defined", "trace_id": "7e93bba2-b274-4c7c-b3ad-01518d703ad1", "span_id": "e248b97e"}
-INFO:     127.0.0.1:58153 - "GET /stream/subconscious HTTP/1.1" 200 OK
-{"ts": "2026-01-11T07:04:22.653940+00:00", "level": "info", "service": "capability_guard", "msg": "FMAAP Validation PASSED", "trace_id": "19b7184d-ee9b-482c-80d9-31faef6f66eb", "span_id": "a4f16c11", "extra": {"score": 0.9400000000000001}}
-{"ts": "2026-01-11T07:04:22.686370+00:00", "level": "error", "service": "engine_core", "msg": "Stream error: name 'time' is not defined", "trace_id": "19b7184d-ee9b-482c-80d9-31faef6f66eb", "span_id": "a4f16c11"}
-INFO:     127.0.0.1:58163 - "GET /stream/subconscious HTTP/1.1" 200 OK
-{"ts": "2026-01-11T07:04:28.659562+00:00", "level": "info", "service": "capability_guard", "msg": "FMAAP Validation PASSED", "trace_id": "f8bfb11d-7b98-4157-a071-34376d839bfa", "span_id": "9da6d879", "extra": {"score": 0.9400000000000001}}
-{"ts": "2026-01-11T07:04:28.665365+00:00", "level": "error", "service": "engine_core", "msg": "Stream error: name 'time' is not defined", "trace_id": "f8bfb11d-7b98-4157-a071-34376d839bfa", "span_id": "9da6d879"}
-INFO:     127.0.0.1:58176 - "GET /stream/subconscious HTTP/1.1" 200 OK
-{"ts": "2026-01-11T07:04:34.648689+00:00", "level": "info", "service": "capability_guard", "msg": "FMAAP Validation PASSED", "trace_id": "1d6ec9d3-2c4d-4f19-b90b-3f0e6aa922cf", "span_id": "fc7e19a5", "extra": {"score": 0.9400000000000001}}
-{"ts": "2026-01-11T07:04:34.654066+00:00", "level": "error", "service": "engine_core", "msg": "Stream error: name 'time' is not defined", "trace_id": "1d6ec9d3-2c4d-4f19-b90b-3f0e6aa922cf", "span_id": "fc7e19a5"}
-INFO:     127.0.0.1:58188 - "GET /stream/subconscious HTTP/1.1" 200 OK
-{"ts": "2026-01-11T07:04:40.650105+00:00", "level": "info", "service": "capability_guard", "msg": "FMAAP Validation PASSED", "trace_id": "96ab5e0e-7529-401d-8449-a5d57ffa9a9a", "span_id": "274e63af", "extra": {"score": 0.9400000000000001}}
-{"ts": "2026-01-11T07:04:40.656033+00:00", "level": "error", "service": "engine_core", "msg": "Stream error: name 'time' is not defined", "trace_id": "96ab5e0e-7529-401d-8449-a5d57ffa9a9a", "span_id": "274e63af"}
-INFO:     127.0.0.1:58196 - "GET /stream/subconscious HTTP/1.1" 200 OK
-{"ts": "2026-01-11T07:04:46.645195+00:00", "level": "info", "service": "capability_guard", "msg": "FMAAP Validation PASSED", "trace_id": "a26e79d6-7e5d-434f-a355-acea6df2bb8b", "span_id": "be984db5", "extra": {"score": 0.9400000000000001}}
-{"ts": "2026-01-11T07:04:46.649768+00:00", "level": "error", "service": "engine_core", "msg": "Stream error: name 'time' is not defined", "trace_id": "a26e79d6-7e5d-434f-a355-acea6df2bb8b", "span_id": "be984db5"}
-INFO:     127.0.0.1:58208 - "GET /stream/subconscious HTTP/1.1" 200 OK
+{"ts": "2026-01-11T07:07:27.834644+00:00", "level": "info", "service": "engine_core", "msg": "\u2705 Dream Synthesis complete. Resonance restored."}
+{"ts": "2026-01-11T07:07:28.660021+00:00", "level": "info", "service": "capability_guard", "msg": "FMAAP Validation PASSED", "trace_id": "35db4742-f8f2-4fbc-8a47-7ada37515914", "span_id": "2674f812", "extra": {"score": 0.9400000000000001}}
+INFO:     127.0.0.1:58475 - "GET /stream/subconscious HTTP/1.1" 200 OK
+{"ts": "2026-01-11T07:07:31.200255+00:00", "level": "info", "service": "capability_guard", "msg": "FMAAP Validation PASSED", "trace_id": "0e6c880b-535b-4262-92bc-64241b035e0b", "span_id": "ae738e28", "extra": {"score": 0.9400000000000001}}
+INFO:     127.0.0.1:58483 - "GET /wallet/balance/user_cli HTTP/1.1" 200 OK
+{"ts": "2026-01-11T07:07:31.397157+00:00", "level": "info", "service": "capability_guard", "msg": "FMAAP Validation PASSED", "trace_id": "c2903ed4-12b6-4113-8ca4-1bfa33cac87f", "span_id": "19bb4878", "extra": {"score": 0.9400000000000001}}
+{"ts": "2026-01-11T07:07:31.402754+00:00", "level": "error", "service": "engine", "msg": "Unhandled exception", "trace_id": "c2903ed4-12b6-4113-8ca4-1bfa33cac87f", "span_id": "19bb4878", "extra": {"error": "'Config' object has no attribute 'identity_url'", "path": "/identity/mint"}}
+INFO:     127.0.0.1:58487 - "POST /identity/mint HTTP/1.1" 500 Internal Server Error
+{"ts": "2026-01-11T07:07:34.648392+00:00", "level": "info", "service": "capability_guard", "msg": "FMAAP Validation PASSED", "trace_id": "1f4a09fb-507e-48f4-ad36-dc3bf0580752", "span_id": "cf4a2f89", "extra": {"score": 0.9400000000000001}}
+INFO:     127.0.0.1:58495 - "GET /stream/subconscious HTTP/1.1" 200 OK
+{"ts": "2026-01-11T07:07:40.647918+00:00", "level": "info", "service": "capability_guard", "msg": "FMAAP Validation PASSED", "trace_id": "7424eb8f-9264-4f1c-ad4e-4f37bcf297d7", "span_id": "9683e92d", "extra": {"score": 0.9400000000000001}}
+INFO:     127.0.0.1:58501 - "GET /stream/subconscious HTTP/1.1" 200 OK
+{"ts": "2026-01-11T07:07:46.647405+00:00", "level": "info", "service": "capability_guard", "msg": "FMAAP Validation PASSED", "trace_id": "5b7f2505-3fb8-49ea-b2c1-f37b2a2de05a", "span_id": "5eb63745", "extra": {"score": 0.9400000000000001}}
+INFO:     127.0.0.1:58510 - "GET /stream/subconscious HTTP/1.1" 200 OK

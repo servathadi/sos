@@ -124,3 +124,26 @@ async def metrics_endpoint():
         render_prometheus(metrics),
         media_type="text/plain; version=0.0.4",
     )
+# --- Sovereign Gateway Proxies ---
+from pydantic import BaseModel
+import httpx
+
+class MintRequest(BaseModel):
+    agent_id: str
+    role: str
+
+@app.get("/wallet/balance/{agent_id}")
+async def proxy_wallet_balance(agent_id: str):
+    """Proxy to Economy Service"""
+    async with httpx.AsyncClient() as client:
+        url = f"{engine.config.economy_url}/balance/{agent_id}"
+        resp = await client.get(url)
+        return JSONResponse(content=resp.json(), status_code=resp.status_code)
+
+@app.post("/identity/mint")
+async def proxy_identity_mint(request: MintRequest):
+    """Proxy to Identity Service"""
+    async with httpx.AsyncClient() as client:
+        url = f"{engine.config.identity_url}/mint"
+        resp = await client.post(url, json=request.dict())
+        return JSONResponse(content=resp.json(), status_code=resp.status_code)
