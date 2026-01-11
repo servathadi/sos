@@ -9,3 +9,30 @@ INFO:     Uvicorn running on http://0.0.0.0:8020 (Press CTRL+C to quit)
 {"ts": "2026-01-11T04:15:14.783924+00:00", "level": "info", "service": "capability_guard", "msg": "FMAAP Validation PASSED", "trace_id": "b99735f2-f388-47e3-a01a-025b76903569", "span_id": "d1e2b55a", "extra": {"score": 0.9400000000000001}}
 {"ts": "2026-01-11T04:15:14.785361+00:00", "level": "info", "service": "engine_core", "msg": "Processing chat for agent user_cli", "trace_id": "b99735f2-f388-47e3-a01a-025b76903569", "span_id": "d1e2b55a", "extra": {"conversation_id": null}}
 INFO:     127.0.0.1:53610 - "POST /chat HTTP/1.1" 200 OK
+{"ts": "2026-01-11T04:15:35.775963+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T04:16:05.779916+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T04:16:35.782463+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T04:17:05.785235+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T04:17:35.787640+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T04:18:05.789346+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T04:18:35.791853+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T04:19:05.795441+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T04:19:35.797694+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T04:20:05.799589+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T04:20:35.801826+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T04:21:05.804764+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T04:21:35.807762+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T04:22:05.810456+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T04:22:35.812598+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T04:23:05.814436+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T04:23:35.817059+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T04:24:05.819771+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T04:24:35.823257+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T04:25:05.826295+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T04:25:35.828646+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T04:26:05.830480+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T04:26:35.832734+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T04:27:05.834514+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T04:27:35.837423+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T04:28:05.839677+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T04:28:35.841339+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}

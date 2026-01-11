@@ -5,6 +5,7 @@ from typing import Optional
 
 from sos.observability.logging import get_logger
 from sos.services.economy.backends import SQLiteWalletBackend, TransactionRecord
+from sos.plugins.economy.solana import SolanaWallet
 
 log = get_logger("economy_wallet")
 
@@ -22,9 +23,31 @@ class SovereignWallet:
     """
     def __init__(self):
         self.backend = SQLiteWalletBackend()
+        self.solana = SolanaWallet()
         # Per-user lock to prevent race conditions on high-frequency trades
         self._locks: dict[str, asyncio.Lock] = {}
         self._global_lock = asyncio.Lock()
+
+    async def sync_on_chain(self, user_id: str):
+        """
+        Synchronize the local ledger with the real Solana balance.
+        """
+        if user_id != "admin": # Only system wallet for now
+            return
+            
+        on_chain_sol = await self.solana.get_balance()
+        # 1 SOL = 1,000,000 RU (approximate exchange rate)
+        target_ru = on_chain_sol * 1000000
+        
+        current_ru = await self.get_balance(user_id)
+        diff = target_ru - current_ru
+        
+        if abs(diff) > 0.001:
+            log.info(f"🔄 Syncing on-chain funds for {user_id}", sol=on_chain_sol, diff_ru=diff)
+            if diff > 0:
+                await self.credit(user_id, diff, reason="on_chain_sync")
+            else:
+                await self.debit(user_id, abs(diff), reason="on_chain_sync")
 
     async def _get_lock(self, user_id: str) -> asyncio.Lock:
         async with self._global_lock:

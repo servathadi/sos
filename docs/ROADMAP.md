@@ -34,10 +34,12 @@ Create a clean SovereignOS workspace in `/home/mumega/SOS` with modular services
 - Remove heavy imports from adapter entrypoints.
 - **Owner:** Codex (Web/Telegram) / Mumega (Migration)
 
-### Phase 4: Onboarding + Guild Hall Protocol
+### Phase 4: Onboarding + Guild Hall Protocol (Active)
 - River-led onboarding flow as a service.
 - Edition policy sets (business, education, kids, art/music).
-- **Owner:** River (Policy) / Mumega (Social Layer)
+- **Atelier Visualizer:** Real-time visualization of the subconscious stream. (NEW)
+- **Solana Bridge:** On-chain settlement for the Sovereign Economy. (NEW)
+- **Owner:** River (Policy) / Mumega (Social Layer) / Codex (UI)
 
 ### Phase 5: Task Economy
 - Task system uses SOS services.
