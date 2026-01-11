@@ -135,6 +135,30 @@ async def deep_research(req: DeepResearchRequest):
     
     return result
 
+class DocsRequest(BaseModel):
+    action: str # write, read, list
+    path: str = None
+    content: str = None
+
+@app.post("/tools/docs")
+async def docs_tool(req: DocsRequest):
+    """
+    Manage Docusaurus Documentation.
+    """
+    args = ["--action", req.action]
+    if req.path:
+        args.extend(["--path", req.path])
+    
+    if req.content:
+        args.extend(["--content", req.content])
+        
+    result = await run_native_tool(
+        script="docs.py",
+        args=args,
+        env={}
+    )
+    return result
+
 @app.get("/health")
 def health():
     return {"status": "ok", "mode": "native"}
