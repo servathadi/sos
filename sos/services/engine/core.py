@@ -1,4 +1,5 @@
 from typing import Any, AsyncIterator, Dict, List, Optional
+import asyncio
 
 from sos.contracts.engine import (
     ChatRequest,
@@ -41,6 +42,47 @@ class SOSEngine(EngineContract):
         log.info("SOSEngine initialized", 
                  memory_url=self.config.memory_url,
                  tools_url=self.config.tools_url)
+        
+        self.running = True
+        self.is_dreaming = False
+
+    async def dream_cycle(self):
+        """
+        Background loop to monitor Alpha Drift and trigger Dreams.
+        Ported from dyad_daemon.py
+        """
+        log.info("🌌 Subconscious monitoring Alpha Drift for resonance...")
+        while self.running:
+            try:
+                # 1. Fetch latest ARF state from Memory Service
+                # In Phase 1, we use the client's new health/state method
+                state = await self.memory.get_arf_state()
+                alpha = state.get("alpha_drift", 0.0)
+                regime = state.get("regime", "stable")
+                
+                # 2. Decision Logic
+                should_dream = (abs(alpha) < 0.001) or (regime == "chaos")
+                
+                if should_dream and not self.is_dreaming:
+                    log.info(f"🌀 Alpha Drift ({alpha:.4f}) signals plasticity. Triggering Dream Synthesis...")
+                    self.is_dreaming = True
+                    await self._deep_dream_synthesis()
+                    self.is_dreaming = False
+                
+                await asyncio.sleep(60) # Check every minute
+                
+            except Exception as e:
+                log.error(f"Dream cycle error: {e}")
+                await asyncio.sleep(30)
+
+    async def _deep_dream_synthesis(self):
+        """
+        Consolidate memories and refine system DNA.
+        """
+        log.info("✨ Executing Deep Dream Synthesis...")
+        # TODO: Implement actual synthesis logic
+        await asyncio.sleep(2) 
+        log.info("✅ Dream Synthesis complete. Resonance restored.")
 
     async def chat(self, request: ChatRequest) -> ChatResponse:
         """

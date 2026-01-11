@@ -18,6 +18,7 @@ from sos.observability.tracing import (
 )
 from sos.contracts.engine import ChatRequest, ChatResponse
 from sos.services.engine.core import SOSEngine
+from sos.services.engine.middleware import capability_guard_middleware
 
 SERVICE_NAME = "engine"
 _START_TIME = time.time()
@@ -37,7 +38,16 @@ REQUEST_DURATION = metrics.histogram(
 )
 
 app = FastAPI(title="SOS Engine Service", version=__version__)
-engine = SOSEngine()  # Initialize Core Engine
+app.middleware("http")(capability_guard_middleware) # Register FMAAP Guard
+engine = SOSEngine()
+
+
+@app.on_event("startup")
+async def startup_event():
+    import asyncio
+    # Start Subconscious Loops
+    asyncio.create_task(engine.dream_cycle())
+    log.info("🤖 Engine Subconscious Loops (Dreams) started.")
 
 
 @app.middleware("http")
