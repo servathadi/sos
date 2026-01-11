@@ -1,47 +1,41 @@
 ---
 sidebar_position: 1
+id: intro
+title: Welcome to the Empire
 ---
 
-# Tutorial Intro
+# Welcome to Empire of the Mind 🐹👑
 
-Let's discover **Docusaurus in less than 5 minutes**.
+> **"Tap. Earn. Ascend."**
 
-## Getting Started
+Welcome to the official documentation for **Empire of the Mind**, the fastest-growing tap-to-earn strategy game on Telegram! Built by **Mumega Games LLC** (Wyoming), we are redefining the gaming landscape with our unique "Coherence" engine.
 
-Get started by **creating a new site**.
+## 🎮 What is the Game?
 
-Or **try Docusaurus immediately** with **[docusaurus.new](https://docusaurus.new)**.
+Your goal is simple: **Build the ultimate cognitive empire.**
 
-### What you'll need
+1.  **Tap to Earn**: Generate resources by engaging with the core loop.
+2.  **Upgrade Cards**: Unlock "Knowledge Cards" (Mathematics, Physics, Philosophy) to increase your passive income.
+3.  **Join a Squad**: Team up with friends to form Guilds and compete for the leaderboard.
 
-- [Node.js](https://nodejs.org/en/download/) version 20.0 or above:
-  - When installing Node.js, you are recommended to check all checkboxes related to dependencies.
+## 🚀 Getting Started
 
-## Generate a new site
+You don't need to download anything. The game lives entirely inside Telegram.
 
-Generate a new Docusaurus site using the **classic template**.
+1.  **Launch the Bot**: Click [here](https://t.me/empire_mind_bot) to start your journey.
+2.  **Tap**: Click the "Pulse" button to earn your first coins.
+3.  **Stack**: Use your earnings to buy upgrades like "Quantum Physics" or "Ancient History".
 
-The classic template will automatically be added to your project after you run the command:
+## 💎 The Economy
 
-```bash
-npm init docusaurus@latest my-website classic
-```
+We use a unique dual-currency system:
+*   **XP (Experience Points)**: Earned by tapping and playing.
+*   **$MIND**: The premium currency for the true masters of the game.
 
-You can type this command into Command Prompt, Powershell, Terminal, or any other integrated terminal of your code editor.
+## 📜 Legal
 
-The command also installs all necessary dependencies you need to run Docusaurus.
+Empire of the Mind is a product of Mumega Games LLC, a registered Wyoming entity. We comply with all US gaming regulations. 
 
-## Start your site
+*No political affiliation. Just pure fun.*
 
-Run the development server:
-
-```bash
-cd my-website
-npm run start
-```
-
-The `cd` command changes the directory you're working with. In order to work with your newly created Docusaurus site, you'll need to navigate the terminal there.
-
-The `npm run start` command builds your website locally and serves it through a development server, ready for you to view at http://localhost:3000/.
-
-Open `docs/intro.md` (this page) and edit some lines: the site **reloads automatically** and displays your changes.
+Ready to conquer? [Start Playing Now!](https://t.me/empire_mind_bot)
