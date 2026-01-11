@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.DS_Store
+.env
+venv/
+logs/
+sos.egg-info/
+test_data_sos/
+*.log
+mumega_sos_stub/.DS_Store
+sos/.DS_Store

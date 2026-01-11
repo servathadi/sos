@@ -1,22 +1,35 @@
 import asyncio
-import os
 import sys
+from sos.clients.tools import ToolsClient
 
-sys.path.append(os.getcwd())
-
-from sos.services.tools.core import ToolsCore
-
-async def test_mcp():
-    print(">>> Initializing Tools Core (with MCP Bridge)...")
-    core = ToolsCore()
+async def main():
+    client = ToolsClient("http://localhost:8003")
     
-    print("\n>>> Listing Tools:")
-    tools = await core.list_tools()
-    for t in tools:
-        print(f" - {t['name']}")
-        
-    print("\n✅ MCP Discovery Complete")
+    print("Checking Health...")
+    try:
+        health = client.health()
+        print(f"Health: {health}")
+    except Exception as e:
+        print(f"Health Check Failed: {e}")
+        return
+
+    print("\nTesting Web Search (Dockerized)...")
+    payload = {
+        "tool_name": "web_search",
+        "arguments": {
+            "query": "What is the capital of France?",
+            "count": 1,
+            "provider": "duckduckgo" # Force DDG to avoid Tavily key need
+        }
+    }
+    
+    try:
+        # Note: ToolsClient.execute expects an object with tool_name/arguments or dict
+        # My implementation handles dict.
+        result = await client.execute(payload)
+        print(f"Result: {result}")
+    except Exception as e:
+        print(f"Execution Failed: {e}")
 
 if __name__ == "__main__":
-    asyncio.run(test_mcp())
-
+    asyncio.run(main())

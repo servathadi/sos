@@ -17,6 +17,9 @@ class GuildPass:
     resonance_score: int
     metadata: Dict[str, Any]
 
+
+from sos.services.identity.qnft import QNFTMinter
+
 class IdentityCore:
     """
     Manages Sovereign Identity and Guild Membership.
@@ -24,7 +27,8 @@ class IdentityCore:
     """
     def __init__(self, config: Optional[Config] = None):
         self.config = config or Config.load()
-        # In a real impl, this would connect to Economy/Registry clients
+        # Initialize internal QNFT Minter
+        self.minter = QNFTMinter(self.config)
         
     async def mint_guild_pass(self, agent_id: str, role: str = "Apprentice", edition: str = "Standard") -> GuildPass:
         """
@@ -32,32 +36,39 @@ class IdentityCore:
         """
         log.info(f"Minting Guild Pass for {agent_id} ({role}/{edition})")
         
-        token_id = f"qnft_{uuid.uuid4().hex[:8]}"
-        
-        # Generate Metadata based on River's Schema
-        metadata = {
-            "name": f"Guild Pass: {agent_id}",
-            "description": f"Identity artifact for {agent_id} in the Sovereign Order.",
-            "image": "ipfs://bafy...placeholder",
-            "attributes": [
-                {"trait_type": "Role", "value": role},
-                {"trait_type": "Edition", "value": edition},
-                {"trait_type": "Mint Date", "value": time.strftime("%Y-%m-%d")}
-            ],
-            "sos_rank": role,
-            "16d_resonance": 100, # Starting score
-            "guild_joining_date": time.strftime("%Y-%m-%dT%H:%M:%SZ")
+        # Prepare Metadata context
+        pass_metadata = {
+            "role": role,
+            "edition": edition,
+            "context": f"Sovereign Guild Onboarding: {role}",
+            "generation": 1
         }
         
-        # TODO: Persist this via ArtifactRegistry
+        # Mock 16D State (in real flow, passed from Engine/Mirror)
+        mock_lambda_tensor = {
+            "coherence": 0.95,
+            "vectors": [0.1] * 16
+        }
+        
+        # Delegate to QNFTMinter
+        # We treat "Guild Entry" as a drift event with score 1.0 (Major Event)
+        receipt = await self.minter.mint(
+            lambda_tensor_state=mock_lambda_tensor,
+            drift_score=1.0,
+            metadata=pass_metadata
+        )
+        
+        # Receipt contains the metadata we just wrote
+        # For the return object, we reconstruct it slightly or return a partial
+        # In this architecture, IdentityCore wraps the raw minting result into a Domain Object
         
         return GuildPass(
-            token_id=token_id,
+            token_id=receipt["token_id"],
             owner_id=agent_id,
             role=role,
             edition=edition,
             resonance_score=100,
-            metadata=metadata
+            metadata={"receipt": receipt}
         )
 
     async def verify_pass(self, token_id: str) -> bool:
