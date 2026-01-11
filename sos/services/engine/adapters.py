@@ -27,13 +27,27 @@ class GeminiAdapter(ModelAdapter):
     """
     def __init__(self, api_key: str = None):
         self.api_key = api_key or os.getenv("GEMINI_API_KEY")
+        print(f"DEBUG: GEMINI_API_KEY present? {bool(self.api_key)}")
+        if not self.api_key:
+            print(f"DEBUG: Env Keys: {[k for k in os.environ.keys() if 'GEMINI' in k]}")
+        
         self.client = None
+        
+        log.info(f"Initializing Gemini Adapter with key: {self.api_key[:5] if self.api_key else 'None'}...")
+        
         if self.api_key:
             try:
                 from google import genai
                 self.client = genai.Client(api_key=self.api_key)
-            except ImportError:
-                log.warning("google-genai not installed.")
+                print("DEBUG: Gemini Client Created Successfully")
+            except ImportError as e:
+                print(f"DEBUG: ImportError: {e}")
+                log.warning(f"google-genai not installed: {e}")
+            except Exception as e:
+                print(f"DEBUG: Client Init Error: {e}")
+                log.error(f"Client Init Error: {e}")
+        else:
+            log.warning("No GEMINI_API_KEY found.")
 
     def get_model_id(self) -> str:
         return "gemini-2.0-flash-exp"

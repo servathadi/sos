@@ -1,0 +1,11 @@
+{"ts": "2026-01-11T01:34:27.192138+00:00", "level": "info", "service": "mcp_bridge", "msg": "Loaded MCP Server: github"}
+{"ts": "2026-01-11T01:34:27.192241+00:00", "level": "info", "service": "mcp_bridge", "msg": "Loaded MCP Server: notion"}
+{"ts": "2026-01-11T01:34:27.192268+00:00", "level": "info", "service": "mcp_bridge", "msg": "Loaded MCP Server: playwright"}
+INFO:     Started server process [1651474]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8003 (Press CTRL+C to quit)
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1651474]

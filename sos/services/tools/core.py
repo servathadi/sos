@@ -29,10 +29,29 @@ class LocalTools(ToolExecutor):
 
     async def execute(self, tool_name: str, args: Dict[str, Any]) -> Any:
         if tool_name not in self._tools:
+            # Check for dynamic wallet tools
+            if tool_name.startswith("wallet_"):
+                return await self._execute_wallet(tool_name, args)
             raise ValueError(f"Unknown tool: {tool_name}")
         
         handler = self._tools[tool_name]
         return await handler(args)
+
+    async def _execute_wallet(self, tool_name: str, args: Dict[str, Any]) -> Any:
+        import httpx
+        ECONOMY_URL = "http://localhost:8002"
+        async with httpx.AsyncClient() as client:
+            if tool_name == "wallet_balance":
+                user_id = args.get("user_id")
+                resp = await client.get(f"{ECONOMY_URL}/balance/{user_id}")
+                return resp.json()
+            elif tool_name == "wallet_debit":
+                resp = await client.post(f"{ECONOMY_URL}/debit", json=args)
+                return resp.json()
+            elif tool_name == "wallet_credit":
+                resp = await client.post(f"{ECONOMY_URL}/credit", json=args)
+                return resp.json()
+        return "Unknown wallet tool"
 
     async def _web_search(self, args: Dict[str, Any]) -> str:
         query = args.get("query")
@@ -84,7 +103,10 @@ class ToolsCore:
     async def list_tools(self) -> List[Dict[str, Any]]:
         local = [
             {"name": "web_search", "description": "Search the web"},
-            {"name": "filesystem_read", "description": "Read a file"}
+            {"name": "filesystem_read", "description": "Read a file"},
+            {"name": "wallet_balance", "description": "Check wallet balance"},
+            {"name": "wallet_debit", "description": "Debit funds from wallet"},
+            {"name": "wallet_credit", "description": "Credit funds to wallet"}
         ]
         mcp = await self.mcp_bridge.list_tools()
         return local + mcp

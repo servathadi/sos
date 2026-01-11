@@ -24,12 +24,12 @@ Create a clean SovereignOS workspace in `/home/mumega/SOS` with modular services
 - Build Engine Service API surface (HTTP+JSON v0.1).
 - **Owner:** Kasra (Engine) / Mumega (Orchestration)
 
-### Phase 2: Memory + Economy Services
-- Move vector memory behind Memory Service.
-- Make Economy Service optional; wallet adapters become plugins.
+### Phase 2: Memory + Economy Services (Complete)
+- Move vector memory behind Memory Service. ✅
+- Make Economy Service optional; wallet adapters become plugins. ✅
 - **Owner:** Kasra (Implementation) / Mizan (Economics)
 
-### Phase 3: Adapters & Thin Clients
+### Phase 3: Adapters & Thin Clients (Active)
 - CLI/Telegram/Discord adapters become thin clients.
 - Remove heavy imports from adapter entrypoints.
 - **Owner:** Codex (Web/Telegram) / Mumega (Migration)

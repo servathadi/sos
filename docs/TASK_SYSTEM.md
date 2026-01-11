@@ -27,6 +27,10 @@ Risks:
 Notes:
 ```
 
+## Recursive Context Injection (New: Jan 10, 2026)
+- **Automatic Grounding:** When an agent spawns a sub-task (e.g., coding), the Task Runner automatically injects `ARCHITECTURE_AGREEMENT.md` and relevant `sos.contracts.*` into the system prompt.
+- **Why:** Ensures autonomous agents follow the Law (FMAAP/Logging) even without explicit instruction.
+
 ## Review Gates
 - Architecture changes require updates to `ARCHITECTURE_AGREEMENT.md`.
 - Service contract changes require version bump and migration note.

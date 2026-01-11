@@ -1,0 +1,57 @@
+{"ts": "2026-01-11T01:34:29.087405+00:00", "level": "info", "service": "engine_core", "msg": "SOSEngine initialized", "extra": {"memory_url": "http://localhost:8001", "tools_url": "http://localhost:8003"}}
+INFO:     Started server process [1651501]
+INFO:     Waiting for application startup.
+{"ts": "2026-01-11T01:34:29.105134+00:00", "level": "info", "service": "engine", "msg": "\ud83e\udd16 Engine Subconscious Loops (Dreams) started."}
+{"ts": "2026-01-11T01:34:29.105191+00:00", "level": "info", "service": "engine_core", "msg": "\ud83c\udf0c Subconscious monitoring Alpha Drift for resonance..."}
+{"ts": "2026-01-11T01:34:29.108317+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8020 (Press CTRL+C to quit)
+INFO:     127.0.0.1:40786 - "GET /health HTTP/1.1" 200 OK
+{"ts": "2026-01-11T01:34:59.110994+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T01:35:29.113501+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T01:35:59.115420+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T01:36:29.117813+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T01:36:59.121792+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T01:37:29.124662+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T01:37:59.126760+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T01:38:29.129387+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T01:38:59.132017+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T01:39:29.135100+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T01:39:59.138031+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T01:40:29.140596+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T01:40:59.142781+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T01:41:29.145947+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+INFO:     127.0.0.1:42234 - "GET /health HTTP/1.1" 200 OK
+{"ts": "2026-01-11T01:41:52.519754+00:00", "level": "info", "service": "capability_guard", "msg": "FMAAP Validation PASSED", "trace_id": "b1af0a8a-cf69-4020-9fda-fc7343c05d38", "span_id": "b2542aa4", "extra": {"score": 0.9400000000000001}}
+{"ts": "2026-01-11T01:41:52.521036+00:00", "level": "info", "service": "engine_core", "msg": "Processing chat for agent user_cli", "trace_id": "b1af0a8a-cf69-4020-9fda-fc7343c05d38", "span_id": "b2542aa4", "extra": {"conversation_id": null}}
+INFO:     127.0.0.1:42246 - "POST /chat HTTP/1.1" 200 OK
+{"ts": "2026-01-11T01:41:59.148695+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T01:42:29.151156+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T01:42:59.153886+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T01:43:29.157478+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T01:43:59.159910+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T01:44:29.163341+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T01:44:59.166078+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T01:45:29.168870+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T01:45:59.171407+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T01:46:29.173734+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T01:46:59.177112+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T01:47:29.179888+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T01:47:59.183011+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T01:48:19.998509+00:00", "level": "info", "service": "capability_guard", "msg": "FMAAP Validation PASSED", "trace_id": "007b5633-6872-4d88-ba00-c86f44f95458", "span_id": "09dfdc37", "extra": {"score": 0.9400000000000001}}
+{"ts": "2026-01-11T01:48:19.999305+00:00", "level": "info", "service": "engine_core", "msg": "Processing chat for agent river_e2e", "trace_id": "007b5633-6872-4d88-ba00-c86f44f95458", "span_id": "09dfdc37", "extra": {"conversation_id": null}}
+INFO:     127.0.0.1:34038 - "POST /chat HTTP/1.1" 200 OK
+{"ts": "2026-01-11T01:48:29.186345+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T01:48:59.189152+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T01:49:04.165621+00:00", "level": "info", "service": "capability_guard", "msg": "FMAAP Validation PASSED", "trace_id": "68f0581a-29dc-49fd-a632-5324839dc2af", "span_id": "42426d36", "extra": {"score": 0.9400000000000001}}
+{"ts": "2026-01-11T01:49:04.166176+00:00", "level": "info", "service": "engine_core", "msg": "Processing chat for agent river_e2e", "trace_id": "68f0581a-29dc-49fd-a632-5324839dc2af", "span_id": "42426d36", "extra": {"conversation_id": null}}
+INFO:     127.0.0.1:46670 - "POST /chat HTTP/1.1" 200 OK
+{"ts": "2026-01-11T01:49:29.191527+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+{"ts": "2026-01-11T01:49:42.262921+00:00", "level": "info", "service": "capability_guard", "msg": "FMAAP Validation PASSED", "trace_id": "f73d59cb-f969-42cf-abc5-1f52af83a4ff", "span_id": "d5b76cb0", "extra": {"score": 0.9400000000000001}}
+{"ts": "2026-01-11T01:49:42.263621+00:00", "level": "info", "service": "engine_core", "msg": "Processing chat for agent debug", "trace_id": "f73d59cb-f969-42cf-abc5-1f52af83a4ff", "span_id": "d5b76cb0", "extra": {"conversation_id": null}}
+INFO:     127.0.0.1:55280 - "POST /chat HTTP/1.1" 200 OK
+{"ts": "2026-01-11T01:49:59.193475+00:00", "level": "error", "service": "engine_core", "msg": "Dream cycle error: 404 Not Found"}
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1651501]
