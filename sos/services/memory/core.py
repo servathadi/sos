@@ -8,6 +8,8 @@ from sos.observability.logging import get_logger
 from sos.services.memory.backends import SQLiteMetadataStore
 from sos.services.memory.vector_store import ChromaBackend
 
+from sos.services.memory.monitor import CoherenceMonitor
+
 log = get_logger("memory_core")
 
 @dataclass
@@ -26,6 +28,7 @@ class MemoryCore:
         self.config = config or Config.load()
         self.vector_store = None
         self.metadata_store = None
+        self.monitor = CoherenceMonitor()
         self._init_storage()
 
     def _init_storage(self):
@@ -52,6 +55,25 @@ class MemoryCore:
         
         metadata = metadata or {}
         
+        # 0. Measure Coherence (Alpha Drift) 
+        # Check similarity to existing memories *before* adding
+        if self.vector_store:
+            try:
+                # Search for nearest neighbor (1-NN)
+                results = self.vector_store.search(content, limit=1)
+                
+                if results and len(results) > 0:
+                    best_score = results[0].score # Similarity (0..1)
+                else:
+                    # First memory or empty store = Maximum Novelty (or Neutral)
+                    best_score = 0.5 
+                
+                state = self.monitor.update(best_score)
+                log.debug(f"🧠 Alpha Drift: {state.alpha_norm:.4f} ({state.regime})")
+                
+            except Exception as e:
+                log.warn(f"Coherence check failed: {e}")
+
         # 1. Store Metadata (Persistent)
         if self.metadata_store:
             self.metadata_store.add(item_id, metadata)
@@ -88,18 +110,15 @@ class MemoryCore:
     async def get_arf_state(self) -> Dict[str, Any]:
         """
         Fetch the current ARF (Alpha Drift) state.
-        In Phase 1, returns a simulated state based on current time.
+        Now returns REAL FRC 841.004 metrics.
         """
-        # Simulation: Alpha drift fluctuates between -0.005 and 0.005
-        # |alpha| < 0.001 triggers dreaming
-        import math
-        alpha = 0.005 * math.sin(time.time() / 100)
-        regime = "stable" if abs(alpha) > 0.001 else "plastic"
+        state = self.monitor.get_state()
         
         return {
-            "alpha_drift": alpha,
-            "regime": regime,
-            "timestamp": time.time()
+            "alpha_drift": state.alpha_norm,
+            "regime": state.regime,
+            "coherence_raw": state.coherence,
+            "timestamp": state.timestamp
         }
 
     async def health(self) -> Dict[str, Any]:

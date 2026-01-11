@@ -55,17 +55,21 @@ class SOSEngine(EngineContract):
         while self.running:
             try:
                 # 1. Fetch latest ARF state from Memory Service
-                # In Phase 1, we use the client's new health/state method
                 state = await self.memory.get_arf_state()
                 alpha = state.get("alpha_drift", 0.0)
                 regime = state.get("regime", "stable")
                 
-                # 2. Decision Logic
-                should_dream = (abs(alpha) < 0.001) or (regime == "chaos")
+                # 2. Decision Logic (FRC 841.004)
+                # Dream when stable (consolidate) or explicitly consolidating
+                # Do NOT dream when plastic (learning/surprise)
+                should_dream = (regime in ["stable", "consolidating"])
                 
                 if should_dream and not self.is_dreaming:
-                    log.info(f"🌀 Alpha Drift ({alpha:.4f}) signals plasticity. Triggering Dream Synthesis...")
+                    if abs(alpha) > 0.1: # Only log if there's notable drift
+                        log.info(f"🌀 Alpha Drift ({alpha:.4f}) -> {regime}. Deepening resonance...")
+                    
                     self.is_dreaming = True
+                    # In Phase 4+, we sends signal to Atelier
                     await self._deep_dream_synthesis()
                     self.is_dreaming = False
                 
