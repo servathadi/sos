@@ -1,15 +1,21 @@
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional
 
 from sos.clients.base import BaseHTTPClient
 
 
 class MemoryClient(BaseHTTPClient):
-    def health(self) -> Dict[str, Any]:
+    async def health(self) -> Dict[str, Any]:
         return self._request("GET", "/health").json()
 
     async def get_arf_state(self) -> Dict[str, Any]:
-        # Note: Using sync wrapper for now as base client is sync
-        return self._request("GET", "/health").json().get("core", {})
+        return self._request("GET", "/state").json()
 
+    async def add(self, content: str, metadata: Dict[str, Any] = None) -> str:
+        payload = {"content": content, "metadata": metadata or {}}
+        return self._request("POST", "/add", json=payload).json()["id"]
+
+    async def search(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
+        payload = {"query": query, "limit": limit}
+        return self._request("POST", "/search", json=payload).json()["results"]

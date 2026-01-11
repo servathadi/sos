@@ -125,5 +125,5 @@ class MemoryCore:
         return {
             "status": "ok",
             "backend": "mock_chroma",
-            "item_count": len(self.vector_store) if self.vector_store else 0
+            "item_count": self.vector_store.count() if self.vector_store else 0
         }

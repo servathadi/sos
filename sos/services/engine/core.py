@@ -1,5 +1,6 @@
 from typing import Any, AsyncIterator, Dict, List, Optional
 import asyncio
+import time
 
 from sos.contracts.engine import (
     ChatRequest,
@@ -28,7 +29,7 @@ class SOSEngine(EngineContract):
         self.config = config or Config.load()
         
         # Initialize Service Clients
-        self.memory = MemoryClient(self.config.memory_url)
+        self.memory = MemoryClient(self.config.memory_url, timeout_seconds=60.0)
         self.tools = ToolsClient(self.config.tools_url)
         self.economy = EconomyClient(self.config.economy_url)
         
@@ -120,23 +121,38 @@ class SOSEngine(EngineContract):
         log.info(f"Processing chat for agent {request.agent_id}", conversation_id=request.conversation_id)
 
         # 1. Retrieve Context (Memory)
-        context = []
-        if request.memory_enabled:
-            pass # TODO: Implement
+        context_str = ""
+        try:
+            if request.memory_enabled:
+                memories = await self.memory.search(request.message, limit=3)
+                if memories:
+                    context_str = "\n".join([f"- {m['content']}" for m in memories])
+                    log.info(f"🧠 Retrieved {len(memories)} memories for context.")
+        except Exception as e:
+            log.error(f"Memory retrieval failed: {e}")
 
-        # 2. Select Model
+        # 2. Select Model & Prepare Prompt
         model_id = request.model or self.default_model
         adapter = self.models.get(model_id, self.models[self.default_model])
 
+        full_prompt = request.message
+        if context_str:
+            full_prompt = f"Context from previous conversations:\n{context_str}\n\nUser: {request.message}"
+
         # 3. Generate
-        response_text = await adapter.generate(request.message)
+        response_text = await adapter.generate(full_prompt)
         
         # 4. Tool Execution (Mock Logic)
         tool_calls = []
         if request.tools_enabled and "time" in request.message:
              tool_calls.append({"name": "get_current_time", "args": {}})
 
-        # 5. Construct Response
+        # 5. Async Consolidation (Store Interaction)
+        # We store the user message and the assistant response
+        if request.memory_enabled:
+            asyncio.create_task(self._consolidate_memory(request.message, response_text, request.agent_id))
+
+        # 6. Construct Response
         return ChatResponse(
             content=response_text,
             agent_id=request.agent_id,
@@ -145,6 +161,19 @@ class SOSEngine(EngineContract):
             tool_calls=tool_calls,
             tokens_used=10
         )
+
+    async def _consolidate_memory(self, user_msg: str, agent_msg: str, agent_id: str):
+        """
+        Store the interaction in long-term memory.
+        """
+        try:
+            # We store the user's prompt as the primary index key
+            await self.memory.add(
+                content=f"User: {user_msg}\nAgent: {agent_msg}",
+                metadata={"type": "chat", "agent_id": agent_id, "timestamp": time.time()}
+            )
+        except Exception as e:
+            log.error(f"Memory consolidation failed: {e}")
 
     async def chat_stream(self, request: ChatRequest) -> AsyncIterator[str]:
         """

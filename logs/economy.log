@@ -1,6 +1,10 @@
-{"ts": "2026-01-11T06:42:08.538904+00:00", "level": "warn", "service": "solana_plugin", "msg": "Using ephemeral Solana keypair (NOT PERSISTENT)"}
-{"ts": "2026-01-11T06:42:08.539004+00:00", "level": "info", "service": "solana_plugin", "msg": "Solana Wallet Initialized: 7zqezeU7cNGkxMUaeMtMru7J7pJTSFr4cwe69GNz4wWz"}
-INFO:     Started server process [52842]
+{"ts": "2026-01-11T07:04:10.994916+00:00", "level": "warn", "service": "solana_plugin", "msg": "Using ephemeral Solana keypair (NOT PERSISTENT)"}
+{"ts": "2026-01-11T07:04:10.994980+00:00", "level": "info", "service": "solana_plugin", "msg": "Solana Wallet Initialized: E23W1Dm3ceDpHSP2zmzbq8QSjBwpW1BwRBmYgWWwvkut"}
+INFO:     Started server process [59699]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8002 (Press CTRL+C to quit)
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [54977]

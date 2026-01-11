@@ -39,6 +39,10 @@ async def health() -> Dict[str, Any]:
         "core": core_health
     }
 
+@app.get("/state")
+async def get_state() -> Dict[str, Any]:
+    return await memory.get_arf_state()
+
 @app.post("/add")
 async def add_memory(request: AddMemoryRequest):
     item_id = await memory.add(request.content, request.metadata)
