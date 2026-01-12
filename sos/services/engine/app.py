@@ -4,7 +4,7 @@ import os
 import time
 from typing import Any, Dict
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse, PlainTextResponse, StreamingResponse
 
 from sos import __version__
@@ -19,6 +19,7 @@ from sos.observability.tracing import (
 from sos.contracts.engine import ChatRequest, ChatResponse
 from sos.services.engine.core import SOSEngine
 from sos.services.engine.middleware import capability_guard_middleware
+from sos.services.bus.core import get_bus
 
 SERVICE_NAME = "engine"
 _START_TIME = time.time()
@@ -48,6 +49,33 @@ async def startup_event():
     # Start Subconscious Loops
     asyncio.create_task(engine.dream_cycle())
     log.info("🤖 Engine Subconscious Loops (Dreams) started.")
+
+
+@app.websocket("/ws/nervous-system/{agent_id}")
+async def websocket_endpoint(websocket: WebSocket, agent_id: str):
+    """
+    WebSocket bridge to the Redis Nervous System.
+    """
+    await websocket.accept()
+    bus = get_bus()
+    await bus.connect()
+    
+    log.info(f"🔌 WebSocket connection established for agent: {agent_id}")
+    
+    try:
+        # Subscribe to private + squad (marketing for now) + global
+        async for message in bus.subscribe(agent_id, squads=["marketing"]):
+            # Forward SOS Message to WebSocket as JSON
+            await websocket.send_json(message.to_dict())
+            log.debug(f"📤 Forwarded signal to {agent_id}: {message.type.value}")
+            
+    except WebSocketDisconnect:
+        log.info(f"🛑 WebSocket disconnected for agent: {agent_id}")
+    except Exception as e:
+        log.error(f"❌ WebSocket error: {e}")
+    finally:
+        # Cleanup if needed
+        pass
 
 
 @app.middleware("http")

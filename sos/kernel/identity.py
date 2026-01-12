@@ -23,6 +23,7 @@ class IdentityType(Enum):
     SERVICE = "service"
     USER = "user"
     SYSTEM = "system"
+    GUILD = "guild"
 
 
 class VerificationStatus(Enum):
@@ -37,17 +38,6 @@ class VerificationStatus(Enum):
 class Identity:
     """
     Base identity for all entities in SOS.
-
-    Attributes:
-        id: Unique identifier (format: {type}:{name})
-        type: Identity type (agent, service, user, system)
-        name: Human-readable name
-        public_key: Ed25519 public key for verification
-        metadata: Additional identity metadata
-        created_at: When identity was created
-        verification_status: Current verification status
-        verified_by: Who verified this identity
-        verified_at: When identity was verified
     """
     id: str
     type: IdentityType
@@ -105,6 +95,110 @@ class Identity:
             verified_by=data.get("verified_by"),
             verified_at=datetime.fromisoformat(data["verified_at"]) if data.get("verified_at") else None,
         )
+
+
+@dataclass
+class UserIdentity(Identity):
+    """
+    Identity for human users in SOS.
+
+    Attributes:
+        bio: User biography/profile text
+        avatar_url: Profile image URL
+        level: User level (gamification)
+        xp: Experience points
+        roles: List of system-wide roles
+        guilds: List of guild IDs user belongs to
+    """
+    bio: str = ""
+    avatar_url: Optional[str] = None
+    level: int = 1
+    xp: int = 0
+    roles: list[str] = field(default_factory=list)
+    guilds: list[str] = field(default_factory=list)
+
+    def __init__(
+        self,
+        name: str,
+        public_key: Optional[str] = None,
+        bio: str = "",
+        avatar_url: Optional[str] = None,
+        metadata: Optional[dict] = None,
+    ):
+        super().__init__(
+            id=f"user:{name}",
+            type=IdentityType.USER,
+            name=name,
+            public_key=public_key,
+            metadata=metadata or {},
+        )
+        self.bio = bio
+        self.avatar_url = avatar_url
+        self.level = 1
+        self.xp = 0
+        self.roles = []
+        self.guilds = []
+
+    def to_dict(self) -> dict[str, Any]:
+        base = super().to_dict()
+        base.update({
+            "bio": self.bio,
+            "avatar_url": self.avatar_url,
+            "level": self.level,
+            "xp": self.xp,
+            "roles": self.roles,
+            "guilds": self.guilds
+        })
+        return base
+
+
+@dataclass
+class Guild(Identity):
+    """
+    A Guild (or Squad) organization unit.
+    
+    Attributes:
+        owner_id: Identity ID of the guild master
+        members: List of member Identity IDs
+        member_roles: Mapping of member_id -> role_name
+        channels: List of communication channels
+        description: Guild description
+    """
+    owner_id: str = ""
+    members: list[str] = field(default_factory=list)
+    member_roles: dict[str, str] = field(default_factory=dict)
+    channels: list[str] = field(default_factory=list)
+    description: str = ""
+
+    def __init__(
+        self,
+        name: str,
+        owner_id: str,
+        description: str = "",
+        metadata: Optional[dict] = None,
+    ):
+        super().__init__(
+            id=f"guild:{name.lower().replace(' ', '_')}",
+            type=IdentityType.GUILD,
+            name=name,
+            metadata=metadata or {},
+        )
+        self.owner_id = owner_id
+        self.description = description
+        self.members = [owner_id]
+        self.member_roles = {owner_id: "leader"}
+        self.channels = ["general", "announcements"]
+
+    def to_dict(self) -> dict[str, Any]:
+        base = super().to_dict()
+        base.update({
+            "owner_id": self.owner_id,
+            "description": self.description,
+            "members": self.members,
+            "member_roles": self.member_roles,
+            "channels": self.channels
+        })
+        return base
 
 
 @dataclass

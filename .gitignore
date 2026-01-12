@@ -10,3 +10,4 @@ test_data_sos/
 mumega_sos_stub/.DS_Store
 sos/.DS_Store
 logs/
+.data/

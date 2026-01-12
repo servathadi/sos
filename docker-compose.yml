@@ -1,0 +1,114 @@
+version: "3.8"
+
+services:
+  # --- CORE INFRASTRUCTURE ---
+  
+  redis:
+    image: redis:7-alpine
+    container_name: sos-nervous-system
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - sos-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # In production, replace with NATS/Kafka
+  # rabbitmq: ...
+
+  # --- SOS SERVICES ---
+
+  sos-engine:
+    build: 
+      context: .
+      dockerfile: sos/services/engine/Dockerfile
+    container_name: sos-engine
+    environment:
+      - SOS_REDIS_URL=redis://redis:6379/0
+      - SOS_IPC_MODE=http
+    ports:
+      - "8000:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - sos-net
+
+  sos-memory:
+    build:
+      context: .
+      dockerfile: sos/services/memory/Dockerfile
+    container_name: sos-memory
+    environment:
+      - SOS_REDIS_URL=redis://redis:6379/0
+    ports:
+      - "8001:8001"
+    networks:
+      - sos-net
+
+  sos-economy:
+    build:
+      context: .
+      dockerfile: sos/services/economy/Dockerfile
+    container_name: sos-economy
+    environment:
+      - SOS_REDIS_URL=redis://redis:6379/0
+    ports:
+      - "8002:8002"
+    networks:
+      - sos-net
+
+  sos-tools:
+    build:
+      context: .
+      dockerfile: sos/services/tools/Dockerfile
+    container_name: sos-tools
+    environment:
+      - SOS_REDIS_URL=redis://redis:6379/0
+    ports:
+      - "8003:8003"
+    networks:
+      - sos-net
+
+  sos-identity:
+    build:
+      context: .
+      dockerfile: sos/services/identity/Dockerfile
+    container_name: sos-identity
+    environment:
+      - SOS_REDIS_URL=redis://redis:6379/0
+      - SOS_HOME=/app/data
+    ports:
+      - "8004:8004"
+    depends_on:
+      - redis
+    networks:
+      - sos-net
+
+  # --- ASYNC WORKERS ---
+  
+  sos-worker:
+    build:
+      context: .
+      dockerfile: sos/services/execution/Dockerfile
+    deploy:
+      replicas: 3  # Scale this to 1000+ for 10M users
+    environment:
+      - SOS_REDIS_URL=redis://redis:6379/0
+      - WORKER_QUEUE=sos:queue:global
+    depends_on:
+      - redis
+    networks:
+      - sos-net
+
+networks:
+  sos-net:
+    driver: bridge
+
+volumes:
+  redis_data:

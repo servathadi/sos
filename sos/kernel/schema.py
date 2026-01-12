@@ -45,6 +45,10 @@ class MessageType(Enum):
     TASK_UPDATE = "task_update"
     TASK_COMPLETE = "task_complete"
 
+    # Witness messages
+    WITNESS_REQUEST = "witness_request"
+    WITNESS_RESPONSE = "witness_response"
+
 
 class ResponseStatus(Enum):
     """Response status codes."""

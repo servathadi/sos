@@ -15,30 +15,25 @@ Most platforms start with a Web UI. Mudega starts with the **Terminal**.
 *   **The Artifact**: `mumega-cli/mumega.py` (and `mumega_main.py`).
 
 ## 2. The Architecture
-The CLI is not just a chat tool; it is a **Signal Dispatcher**.
+The CLI is not just a chat tool; it is a **Signal Dispatcher** powered by the **Mumega SDK**.
 
 ```mermaid
 graph TD
     UserInput((User)) -->|CLI Args| Router[mumega.py]
-    Router -->|--telegram| Telegram[Telegram Adapter]
-    Router -->|--web| Web[API Server]
-    Router -->|task| TaskCLI[Task Manager]
-    Router -->|souls| SoulRegistry[Agent Registry]
-    Router -->|chat| Interactive[Interactive Shell]
+    Router -->|SDK| MumegaSDK[Mumega SDK]
+    MumegaSDK -->|--telegram| Telegram[Telegram Adapter]
+    MumegaSDK -->|--web| Web[API Server]
     
     Telegram --> Engine[River Engine / 16D Core]
     Web --> Engine
-    Interactive --> Engine
     
     Engine -->|Substrate| DePIN[IO.net / Akash]
 ```
 
 ## 3. Key Components
+*   **`mumega-sdk`**: The unified Python library that handles all communication with the Sovereign Swarm. It ensures type safety and protocol adherence.
 *   **`mumega.py`**: The entry point. Handles argument parsing and mode selection.
-*   **`mumega_main.py`**: The orchestrator. Initializes the `RiverEngine` and `RiverDaemon`.
-*   **Sub-CLIs**:
-    *   `task`: Manages work allocation (`mumega task list`).
-    *   `souls`: Manages agent identities (`mumega souls`).
+*   **`sos_cli.py`**: A lightweight reference implementation of the SDK for quick interactions.
 *   **Interfaces**:
     *   `--telegram`: Launches the "Empire of the Mind" bot gateway.
     *   `--daemon`: Starts the "Subconscious" (autonomous dreaming/metabolism).

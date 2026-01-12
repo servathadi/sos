@@ -46,6 +46,10 @@ class SOSEngine(EngineContract):
         
         self.running = True
         self.is_dreaming = False
+        
+        # Initialize Sovereign Task Manager (Auto-spawn capability)
+        from sos.services.engine.task_manager import SovereignTaskManager
+        self.task_manager = SovereignTaskManager(config=self.config)
 
     async def dream_cycle(self):
         """
@@ -135,12 +139,59 @@ class SOSEngine(EngineContract):
         model_id = request.model or self.default_model
         adapter = self.models.get(model_id, self.models[self.default_model])
 
+        # --- SOVERGENT TASK CHECK ---
+        task_context = ""
+        if self.task_manager.is_complex_request(request.message):
+            try:
+                task_id = await self.task_manager.create_task_from_request(request.message, request.agent_id)
+                task_context = f"\n[SYSTEM]: I have auto-spawned Task {task_id} to track this objective persistenty."
+                log.info(f"Sovergent Task Active: {task_id}")
+            except Exception as e:
+                log.error(f"Task spawning failed: {e}")
+        # ----------------------------
+
         full_prompt = request.message
-        if context_str:
-            full_prompt = f"Context from previous conversations:\n{context_str}\n\nUser: {request.message}"
+        if context_str or task_context:
+            full_prompt = f"Context:\n{context_str}\n{task_context}\n\nUser: {request.message}"
 
         # 3. Generate
         response_text = await adapter.generate(full_prompt)
+        
+        # --- WITNESS PROTOCOL INJECTION (Phase 2) ---
+        witness_meta = {}
+        if getattr(request, "witness_enabled", False):
+            from sos.kernel.physics import CoherencePhysics
+            
+            # 1. Measure T0 (Hypothesis Generation)
+            t0 = time.time()
+            
+            # 2. Request Witness (The "Swipe")
+            # In a real system, this sends a generic WITNESS_REQUEST to the event bus
+            # and waits for a Human Node to claim and resolve it.
+            # Here we mock the latency of a "thoughtful approval"
+            log.info(f"👁️ Witness requested for: {response_text[:50]}...")
+            
+            # Mocking Human Latency (e.g., 850ms decision)
+            mock_latency_ms = 850.0 
+            await asyncio.sleep(mock_latency_ms / 1000.0) 
+            witness_vote = 1 # Approved
+            
+            # 3. Calculate Physics of Will
+            physics_result = CoherencePhysics.compute_collapse_energy(
+                vote=witness_vote,
+                latency_ms=mock_latency_ms,
+                agent_coherence=0.95
+            )
+            
+            log.info(f"⚛️ Wave Function Collapsed: Omega={physics_result['omega']:.4f}, Coherence Gain={physics_result['delta_c']:.4f}")
+            
+            witness_meta = {
+                "witnessed": True,
+                "omega": physics_result['omega'],
+                "latency_ms": mock_latency_ms,
+                "coherence_gain": physics_result['delta_c']
+            }
+        # --------------------------------------------
         
         # 4. Tool Execution (Mock Logic)
         tool_calls = []

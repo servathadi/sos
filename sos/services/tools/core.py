@@ -19,12 +19,14 @@ class ToolExecutor:
 
 class LocalTools(ToolExecutor):
     """
-    Executes sovereign tools (Web Search, Filesystem).
+    Executes sovereign tools (Web Search, Filesystem, Spore Generation).
     """
     def __init__(self):
         self._tools = {
             "web_search": self._web_search,
-            "filesystem_read": self._filesystem_read
+            "filesystem_read": self._filesystem_read,
+            "generate_spore": self._generate_spore,
+            "generate_ui_asset": self._generate_ui_asset
         }
 
     async def execute(self, tool_name: str, args: Dict[str, Any]) -> Any:
@@ -36,6 +38,20 @@ class LocalTools(ToolExecutor):
         
         handler = self._tools[tool_name]
         return await handler(args)
+
+    async def _generate_spore(self, args: Dict[str, Any]) -> str:
+        from sos.services.tools.spore import SporeGenerator
+        agent_name = args.get("agent_name", "River")
+        generator = SporeGenerator(agent_name=agent_name)
+        return generator.generate_spore()
+
+    async def _generate_ui_asset(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        from sos.services.tools.assets import get_asset_generator
+        generator = get_asset_generator()
+        return await generator.generate_ui_asset(
+            prompt=args.get("prompt", "A glowing mycelium node"),
+            asset_type=args.get("asset_type", "card")
+        )
 
     async def _execute_wallet(self, tool_name: str, args: Dict[str, Any]) -> Any:
         import httpx
@@ -104,6 +120,7 @@ class ToolsCore:
         local = [
             {"name": "web_search", "description": "Search the web"},
             {"name": "filesystem_read", "description": "Read a file"},
+            {"name": "generate_spore", "description": "Generate a context-injection spore for agent state transfer"},
             {"name": "wallet_balance", "description": "Check wallet balance"},
             {"name": "wallet_debit", "description": "Debit funds from wallet"},
             {"name": "wallet_credit", "description": "Credit funds to wallet"}

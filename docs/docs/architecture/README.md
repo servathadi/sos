@@ -59,8 +59,19 @@ Logging, metrics, and tracing utilities.
 | `metrics.py` | Prometheus metrics helpers |
 | `tracing.py` | Distributed tracing context |
 
-### Clients (`sos/clients/`)
-Thin HTTP clients for adapters (no heavy service imports).
+### Mumega SDK (`mumega-sdk`)
+**The Official Public Interface.**
+This standalone Python package provides a unified, typed client for all SOS services. It is the recommended way for agents, tools, and the CLI to interact with the swarm.
+
+| Feature | Description |
+|---------|-------------|
+| `MumegaClient` | Main entry point with auto-discovery and auth. |
+| `client.chat` | Interface to the Engine Service. |
+| `client.wallet` | Interface to the Economy Service. |
+| `client.identity` | Interface to the Identity/Guilds system. |
+
+### Internal Clients (`sos/clients/`)
+*Legacy/Internal use only.* Thin HTTP wrappers used by the services themselves. New development should prefer `mumega-sdk`.
 
 | Module | Description |
 |--------|-------------|
