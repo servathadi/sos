@@ -72,31 +72,70 @@ class AccountantAgent(SOSEngine):
         
         while self.running:
             try:
-                # Placeholder for complex logic:
-                # 1. Scan /data/financials for new CSVs
-                # 2. Parse using Pandas/LLM
-                # 3. Categorize transactions
-                
-                # Simulation of "Thinking" / processing a batch
-                log.info("🤔 Analyzing financial streams...")
-                await asyncio.sleep(5) 
-                
-                # Simulate a finding
-                finding = "Identified 3 potential duplicate transactions in 2023 ledger."
-                log.info(f"💡 Finding: {finding}")
-                
-                # Persist finding to Mirror
-                await self.mirror.save_checkpoint(
-                    summary=finding,
-                    tags=["analysis", "2023", "duplicates"]
+                # 1. Scan Google Drive for Financial Documents
+                log.info("🔎 Scanning Google Drive for 2023-2024 tax documents...")
+                drive_results = await self.execute_tool(
+                    ToolCallRequest(
+                        tool_name="google_drive_list",
+                        arguments={"query": "name contains '2023' or name contains '2024' or name contains 'Tax'"}
+                    )
                 )
                 
-                # Wait before next pass
-                await asyncio.sleep(20) 
+                import json
+                files = json.loads(drive_results.output) if hasattr(drive_results, 'output') else []
+                
+                if not files:
+                    log.info("📭 No new tax documents found on Drive.")
+                else:
+                    log.info(f"📁 Found {len(files)} relevant documents.")
+                    for file in files:
+                        if file['mimeType'] == 'application/vnd.google-apps.spreadsheet':
+                            log.info(f"📊 Analyzing spreadsheet: {file['name']}")
+                            # 2. Read Sheet Content
+                            sheet_data = await self.execute_tool(
+                                ToolCallRequest(
+                                    tool_name="google_sheet_read",
+                                    arguments={"spreadsheet_id": file['id'], "range": "A1:G50"}
+                                )
+                            )
+                            # 3. Analyze logic
+                            await self.process_financial_data(file['name'], sheet_data.output)
+
+                # Wait before next pass (Longer delay for production)
+                await asyncio.sleep(60) 
                 
             except Exception as e:
                 log.error(f"Work Loop Error: {e}")
-                await asyncio.sleep(10)
+                await asyncio.sleep(30)
+
+    async def process_financial_data(self, source_name: str, data_json: str):
+        """
+        Process the raw data and generate findings.
+        """
+        try:
+            import json
+            data = json.loads(data_json)
+            # Simulated analysis: Look for keywords or amounts
+            findings = []
+            
+            # Example heuristic: Check rows for "CRA" or "Tax" or high amounts
+            for row in data:
+                row_str = " ".join([str(cell) for cell in row]).lower()
+                if "missing" in row_str or "receipt" in row_str:
+                    findings.append(f"Missing receipt flag indentified in {source_name}: {row}")
+
+            if findings:
+                for f in findings:
+                    log.info(f"💡 Finding: {f}")
+                    await self.mirror.save_checkpoint(
+                        summary=f"Audit Finding ({source_name}): {f}",
+                        tags=["audit", "tax_prep", source_name]
+                    )
+            else:
+                log.info(f"✅ {source_name} processed. No immediate anomalies found.")
+
+        except Exception as e:
+            log.error(f"Analysis error for {source_name}: {e}")
 
 if __name__ == "__main__":
     agent = AccountantAgent()

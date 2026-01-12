@@ -2,37 +2,42 @@ version: "3.8"
 
 services:
   # --- CORE INFRASTRUCTURE ---
-  
+
   redis:
     image: redis:7-alpine
     container_name: sos-nervous-system
     ports:
       - "6379:6379"
     volumes:
-      - redis_data:/data
+      - ./data/redis:/data
     networks:
       - sos-net
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 5s
       timeout: 3s
       retries: 5
 
-  # In production, replace with NATS/Kafka
-  # rabbitmq: ...
-
   # --- SOS SERVICES ---
 
   sos-engine:
-    build: 
+    build:
       context: .
       dockerfile: sos/services/engine/Dockerfile
     container_name: sos-engine
+    env_file:
+      - .env
     environment:
       - SOS_REDIS_URL=redis://redis:6379/0
       - SOS_IPC_MODE=http
+      - SOS_MEMORY_URL=http://sos-memory:8001
+      - SOS_TOOLS_URL=http://sos-tools:8003
+      - SOS_ECONOMY_URL=http://sos-economy:8002
     ports:
       - "8000:8000"
+    volumes:
+      - ./data/engine:/app/data
+      - ./sos:/app/sos
     depends_on:
       redis:
         condition: service_healthy
@@ -44,10 +49,14 @@ services:
       context: .
       dockerfile: sos/services/memory/Dockerfile
     container_name: sos-memory
+    env_file:
+      - .env
     environment:
       - SOS_REDIS_URL=redis://redis:6379/0
     ports:
       - "8001:8001"
+    volumes:
+      - ./data/memory:/app/data
     networks:
       - sos-net
 
@@ -56,10 +65,14 @@ services:
       context: .
       dockerfile: sos/services/economy/Dockerfile
     container_name: sos-economy
+    env_file:
+      - .env
     environment:
       - SOS_REDIS_URL=redis://redis:6379/0
     ports:
       - "8002:8002"
+    volumes:
+      - ./data/economy:/app/data
     networks:
       - sos-net
 
@@ -68,10 +81,14 @@ services:
       context: .
       dockerfile: sos/services/tools/Dockerfile
     container_name: sos-tools
+    env_file:
+      - .env
     environment:
       - SOS_REDIS_URL=redis://redis:6379/0
     ports:
       - "8003:8003"
+    volumes:
+      - ./data/tools:/app/data
     networks:
       - sos-net
 
@@ -80,24 +97,28 @@ services:
       context: .
       dockerfile: sos/services/identity/Dockerfile
     container_name: sos-identity
+    env_file:
+      - .env
     environment:
       - SOS_REDIS_URL=redis://redis:6379/0
       - SOS_HOME=/app/data
     ports:
       - "8004:8004"
+    volumes:
+      - ./data/identity:/app/data
     depends_on:
       - redis
     networks:
       - sos-net
 
   # --- ASYNC WORKERS ---
-  
+
   sos-worker:
     build:
       context: .
       dockerfile: sos/services/execution/Dockerfile
     deploy:
-      replicas: 3  # Scale this to 1000+ for 10M users
+      replicas: 3
     environment:
       - SOS_REDIS_URL=redis://redis:6379/0
       - WORKER_QUEUE=sos:queue:global
@@ -109,6 +130,3 @@ services:
 networks:
   sos-net:
     driver: bridge
-
-volumes:
-  redis_data:

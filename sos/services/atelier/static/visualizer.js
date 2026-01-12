@@ -97,11 +97,11 @@ animate();
 
 // SSE Connection
 function connect() {
-    const engineUrl = 'http://localhost:8020/stream/subconscious';
+    const engineUrl = 'http://localhost:8000/stream/subconscious';
     const eventSource = new EventSource(engineUrl);
 
     eventSource.onopen = () => {
-        statusBadge.textContent = 'ONLINE (8020)';
+        statusBadge.textContent = 'ONLINE (8000)';
         statusBadge.classList.add('online');
         addLog('Connection established with SOS Engine.', true);
     };
@@ -127,6 +127,7 @@ function updateUI(data) {
     alphaDrift = data.alpha_drift;
     regime = data.regime.toUpperCase();
     isDreaming = data.is_dreaming;
+    const pendingWitness = data.pending_witness;
 
     // Update Text
     driftEl.textContent = alphaDrift.toFixed(6);
@@ -134,12 +135,28 @@ function updateUI(data) {
     metricAlphaEl.textContent = alphaDrift.toFixed(6);
     metricRegimeEl.textContent = regime;
 
+    // Dreaming UI
     if (isDreaming) {
         metricDreamingEl.textContent = 'ACTIVE';
         dreamCard.classList.add('dreaming');
     } else {
         metricDreamingEl.textContent = 'INACTIVE';
         dreamCard.classList.remove('dreaming');
+    }
+
+    // Witness UI
+    const witnessCard = document.getElementById('witness-status-card');
+    const witnessMetric = document.getElementById('metric-witness');
+    const overlay = document.getElementById('superposition-overlay');
+
+    if (pendingWitness) {
+        witnessMetric.textContent = 'SUPERPOSITION';
+        witnessCard.classList.add('pending');
+        overlay.classList.remove('hidden');
+    } else {
+        witnessMetric.textContent = 'OBSERVED';
+        witnessCard.classList.remove('pending');
+        overlay.classList.add('hidden');
     }
 
     // Colors
@@ -174,6 +191,37 @@ function addLog(msg, isEvent = false) {
         logContainer.removeChild(logContainer.lastChild);
     }
 }
+
+// Witness Event Resolution
+canvas.addEventListener('click', () => {
+    if (isDreaming) {
+        addLog("Cannot witness during deep dream.", true);
+        return;
+    }
+
+    addLog("Witness Collapse Signal Sent...", true);
+
+    // In this prototype, we target the default agent/convo
+    // In Phase 4, we will fetch the active pending ID from the SSE stream
+    fetch('http://localhost:8000/witness', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            agent_id: "antigravity", // Mock for demo
+            conversation_id: "default",
+            vote: 1
+        })
+    })
+        .then(resp => resp.json())
+        .then(data => {
+            if (data.status === 'collapsed') {
+                addLog("⚛️ WAVE COLLAPSED: Will Verified.", true);
+            }
+        })
+        .catch(err => {
+            addLog("❌ Collapse Failed: No pending wave.", true);
+        });
+});
 
 // Start
 connect();

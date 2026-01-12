@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import time
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse, PlainTextResponse, StreamingResponse
@@ -175,3 +175,22 @@ async def proxy_identity_mint(request: MintRequest):
         url = f"{engine.config.identity_url}/mint"
         resp = await client.post(url, json=request.dict())
         return JSONResponse(content=resp.json(), status_code=resp.status_code)
+
+class WitnessCollapseRequest(BaseModel):
+    agent_id: str
+    conversation_id: Optional[str] = None
+    vote: int = 1 # 1 for Approve, -1 for Reject
+
+@app.post("/witness")
+async def resolve_witness(request: WitnessCollapseRequest):
+    """
+    Manually collapse a pending wave function (Witness Protocol).
+    """
+    resolved = await engine.resolve_witness(
+        request.agent_id, 
+        request.conversation_id, 
+        request.vote
+    )
+    if not resolved:
+        raise HTTPException(status_code=404, detail="No pending witness found for this agent/conversation.")
+    return {"status": "collapsed", "agent_id": request.agent_id}

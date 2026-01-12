@@ -51,6 +51,11 @@ class SOSEngine(EngineContract):
         from sos.services.engine.task_manager import SovereignTaskManager
         self.task_manager = SovereignTaskManager(config=self.config)
 
+        # Physics Realization: Witness Registry
+        # Maps (agent_id, conversation_id) -> asyncio.Event
+        self.pending_witnesses: Dict[str, asyncio.Event] = {}
+        self.witness_results: Dict[str, int] = {} # Maps key -> vote (+1/-1)
+
     async def dream_cycle(self):
         """
         Background loop to monitor Alpha Drift and trigger Dreams.
@@ -109,6 +114,7 @@ class SOSEngine(EngineContract):
                     "alpha_drift": state.get("alpha_drift", 0.0),
                     "regime": state.get("regime", "stable"),
                     "is_dreaming": self.is_dreaming,
+                    "pending_witness": len(self.pending_witnesses) > 0,
                     "timestamp": time.time()
                 }
                 
@@ -157,39 +163,55 @@ class SOSEngine(EngineContract):
         # 3. Generate
         response_text = await adapter.generate(full_prompt)
         
-        # --- WITNESS PROTOCOL INJECTION (Phase 2) ---
+        # --- WITNESS PROTOCOL REALIZATION (Phase 3) ---
         witness_meta = {}
         if getattr(request, "witness_enabled", False):
             from sos.kernel.physics import CoherencePhysics
             
-            # 1. Measure T0 (Hypothesis Generation)
+            # 1. Measurement Start (T0)
             t0 = time.time()
             
-            # 2. Request Witness (The "Swipe")
-            # In a real system, this sends a generic WITNESS_REQUEST to the event bus
-            # and waits for a Human Node to claim and resolve it.
-            # Here we mock the latency of a "thoughtful approval"
-            log.info(f"👁️ Witness requested for: {response_text[:50]}...")
+            # 2. Enter SUPERPOSITION (Pending Witness)
+            witness_key = f"{request.agent_id}:{request.conversation_id or 'default'}"
+            witness_event = asyncio.Event()
+            self.pending_witnesses[witness_key] = witness_event
             
-            # Mocking Human Latency (e.g., 850ms decision)
-            mock_latency_ms = 850.0 
-            await asyncio.sleep(mock_latency_ms / 1000.0) 
-            witness_vote = 1 # Approved
+            log.info(f"👁️ SUPERPOSITION: Agent {request.agent_id} awaiting witness collapse...", 
+                     key=witness_key, preview=response_text[:50])
             
-            # 3. Calculate Physics of Will
+            # 3. Wait for COLLAPSE (The "Swipe")
+            try:
+                # Max wait 30 seconds for human response
+                await asyncio.wait_for(witness_event.wait(), timeout=30.0)
+                witness_vote = self.witness_results.get(witness_key, 1) # Default to Approve
+            except asyncio.TimeoutError:
+                log.warn(f"⚠️ Witness Timeout for {witness_key}. Defaulting to Decay.")
+                witness_vote = 0 # Decay
+            
+            # 4. Measurement End (T1)
+            t1 = time.time()
+            real_latency_ms = (t1 - t0) * 1000.0
+            
+            # Cleanup
+            self.pending_witnesses.pop(witness_key, None)
+            self.witness_results.pop(witness_key, None)
+            
+            # 5. Calculate Physics of Will
             physics_result = CoherencePhysics.compute_collapse_energy(
                 vote=witness_vote,
-                latency_ms=mock_latency_ms,
-                agent_coherence=0.95
+                latency_ms=real_latency_ms,
+                agent_coherence=0.95 # TODO: Fetch real coherence from Mirror
             )
             
-            log.info(f"⚛️ Wave Function Collapsed: Omega={physics_result['omega']:.4f}, Coherence Gain={physics_result['delta_c']:.4f}")
+            log.info(f"⚛️ Wave Function Collapsed: Omega={physics_result['omega']:.4f}, Coherence Gain={physics_result['delta_c']:.4f}",
+                     latency_ms=f"{real_latency_ms:.2f}")
             
             witness_meta = {
                 "witnessed": True,
                 "omega": physics_result['omega'],
-                "latency_ms": mock_latency_ms,
-                "coherence_gain": physics_result['delta_c']
+                "latency_ms": real_latency_ms,
+                "coherence_gain": physics_result['delta_c'],
+                "vote": witness_vote
             }
         # --------------------------------------------
         
@@ -210,7 +232,8 @@ class SOSEngine(EngineContract):
             model_used=model_id,
             conversation_id=request.conversation_id or "new",
             tool_calls=tool_calls,
-            tokens_used=10
+            tokens_used=10,
+            metadata=witness_meta
         )
 
     async def _consolidate_memory(self, user_msg: str, agent_msg: str, agent_id: str):
@@ -246,6 +269,18 @@ class SOSEngine(EngineContract):
             {"id": "sos-mock-v1", "name": "SOS Mock Model", "status": "active"},
             {"id": "gemini-flash", "name": "Gemini Flash", "status": "planned"},
         ]
+
+    async def resolve_witness(self, agent_id: str, conversation_id: str, vote: int = 1):
+        """
+        External trigger to collapse a pending witness event.
+        """
+        key = f"{agent_id}:{conversation_id or 'default'}"
+        if key in self.pending_witnesses:
+            self.witness_results[key] = vote
+            self.pending_witnesses[key].set()
+            log.info(f"⚡ Witness Collapsed externally for {key} (Vote: {vote})")
+            return True
+        return False
 
     async def health(self) -> Dict[str, Any]:
         return {

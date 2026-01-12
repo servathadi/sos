@@ -26,7 +26,9 @@ class LocalTools(ToolExecutor):
             "web_search": self._web_search,
             "filesystem_read": self._filesystem_read,
             "generate_spore": self._generate_spore,
-            "generate_ui_asset": self._generate_ui_asset
+            "generate_ui_asset": self._generate_ui_asset,
+            "google_drive_list": self._google_drive_list,
+            "google_sheet_read": self._google_sheet_read,
         }
 
     async def execute(self, tool_name: str, args: Dict[str, Any]) -> Any:
@@ -99,6 +101,39 @@ class LocalTools(ToolExecutor):
         except Exception as e:
             return f"Read Error: {e}"
 
+    async def _google_drive_list(self, args: Dict[str, Any]) -> str:
+        from sos.services.tools.google_auth import get_google_credentials
+        from googleapiclient.discovery import build
+        try:
+            creds = get_google_credentials()
+            service = build('drive', 'v3', credentials=creds)
+            query = args.get("query", "mimeType='application/vnd.google-apps.spreadsheet' or mimeType='application/pdf'")
+            results = service.files().list(
+                pageSize=args.get("limit", 10), 
+                q=query,
+                fields="files(id, name, mimeType)").execute()
+            items = results.get('files', [])
+            return json.dumps(items, indent=2)
+        except Exception as e:
+            return f"Google Drive Error: {e}"
+
+    async def _google_sheet_read(self, args: Dict[str, Any]) -> str:
+        from sos.services.tools.google_auth import get_google_credentials
+        from googleapiclient.discovery import build
+        spreadsheet_id = args.get("spreadsheet_id")
+        range_name = args.get("range", "Sheet1!A1:Z100")
+        if not spreadsheet_id:
+            return "Error: Missing spreadsheet_id"
+        try:
+            creds = get_google_credentials()
+            service = build('sheets', 'v4', credentials=creds)
+            sheet = service.spreadsheets()
+            result = sheet.values().get(spreadsheet_id=spreadsheet_id, range=range_name).execute()
+            values = result.get('values', [])
+            return json.dumps(values, indent=2)
+        except Exception as e:
+            return f"Google Sheets Error: {e}"
+
 from sos.services.tools.mcp_bridge import MCPBridge
 
 class ToolsCore:
@@ -123,7 +158,9 @@ class ToolsCore:
             {"name": "generate_spore", "description": "Generate a context-injection spore for agent state transfer"},
             {"name": "wallet_balance", "description": "Check wallet balance"},
             {"name": "wallet_debit", "description": "Debit funds from wallet"},
-            {"name": "wallet_credit", "description": "Credit funds to wallet"}
+            {"name": "wallet_credit", "description": "Credit funds to wallet"},
+            {"name": "google_drive_list", "description": "List files from Google Drive"},
+            {"name": "google_sheet_read", "description": "Read values from a Google Sheet"}
         ]
         mcp = await self.mcp_bridge.list_tools()
         return local + mcp

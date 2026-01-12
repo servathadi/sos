@@ -6,7 +6,7 @@ import uvicorn
 
 
 def main() -> None:
-    host = os.getenv("SOS_MEMORY_HOST", "127.0.0.1")
+    host = os.getenv("SOS_MEMORY_HOST", "0.0.0.0")
     port = int(os.getenv("SOS_MEMORY_PORT", "8001"))
     uvicorn.run(
         "sos.services.memory.app:app",
