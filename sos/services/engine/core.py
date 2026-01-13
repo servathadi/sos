@@ -205,6 +205,20 @@ class SOSEngine(EngineContract):
             
             log.info(f"⚛️ Wave Function Collapsed: Omega={physics_result['omega']:.4f}, Coherence Gain={physics_result['delta_c']:.4f}",
                      latency_ms=f"{real_latency_ms:.2f}")
+
+            # 6. PERSIST TO ECONOMY ($MIND Mining)
+            if physics_result['delta_c'] > 0:
+                try:
+                    # In a real system, the 'user_id' would come from the request context/auth
+                    # For this phase, we use the agent_id as the primary wallet for the session
+                    await self.economy.credit(
+                        user_id=request.agent_id,
+                        amount=physics_result['delta_c'],
+                        reason=f"witness_collapse:{witness_key}"
+                    )
+                    log.info(f"💰 Mined {physics_result['delta_c']:.4f} $MIND for {request.agent_id}")
+                except Exception as e:
+                    log.error(f"❌ Failed to persist $MIND mining: {e}")
             
             witness_meta = {
                 "witnessed": True,

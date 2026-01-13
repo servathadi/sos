@@ -7,6 +7,12 @@ ENGINE_URL = "http://localhost:8000"
 
 async def test_physics_realization():
     async with httpx.AsyncClient(timeout=40.0) as client:
+        # 0. Check Pre-Balance
+        print("💰 Phase 0: Checking Initial Wallet Balance...")
+        balance_resp = await client.get(f"{ENGINE_URL}/wallet/balance/antigravity")
+        initial_balance = balance_resp.json().get("balance", 0.0)
+        print(f"Initial Balance: {initial_balance:.4f} $MIND")
+
         print("\n🚀 Phase 1: Sending Witness-Enabled Chat Request...")
         # 1. Start Chat in background (since it will hang in superposition)
         chat_payload = {
@@ -68,6 +74,19 @@ async def test_physics_realization():
             print(f"⏱️ Real Latency: {meta.get('latency_ms', 0):.2f} ms")
             print(f"⚛️ Will Magnitude (Omega): {meta.get('omega', 0):.4f}")
             print(f"💎 Coherence Gain: {meta.get('coherence_gain', 0):.6f}")
+
+            # 6. Verify Final Balance
+            print("\n💰 Phase 6: Verifying $MIND Mining...")
+            await asyncio.sleep(1) # Wait for async persistence
+            balance_post_resp = await client.get(f"{ENGINE_URL}/wallet/balance/antigravity")
+            final_balance = balance_post_resp.json().get("balance", 0.0)
+            print(f"Final Balance: {final_balance:.4f} $MIND")
+            
+            diff = final_balance - initial_balance
+            if abs(diff - meta.get('coherence_gain', 0)) < 0.0001:
+                print("✅ ECONOMY SYNCED: Coherence Gain successfully minted as $MIND.")
+            else:
+                print(f"⚠️ Economy Alert: Balance mismatch. Expected gain: {meta.get('coherence_gain', 0):.6f}, Actual gain: {diff:.6f}")
         else:
             print("❌ Error: Missing physics metadata in response.")
 
