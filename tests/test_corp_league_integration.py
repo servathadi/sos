@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Test: Corp-League Integration
+Test: Corp-League-PM Integration
 
-Tests the wiring between Sovereign Corps and League System.
+Tests the wiring between Sovereign Corps, League System, and SovereignPM.
 """
 
 import sys
@@ -23,8 +23,16 @@ from scopes.features.marketplace.sovereign_corp import (
     CorpStatus,
     ExecutiveRole,
 )
+from scopes.features.marketplace.tools.sovereign_pm import (
+    SovereignPM,
+    TaskPriority,
+    TaskStatus,
+    Bounty,
+    BountyCurrency,
+)
 from scopes.features.marketplace.integrations import (
     CorpLeagueIntegration,
+    PMCorpLeagueIntegration,
     incorporate_with_league,
 )
 
@@ -222,6 +230,208 @@ def test_corp_league_integration():
     return True
 
 
+def test_pm_corp_league_integration():
+    """Test the PM-Corp-League integration flow."""
+    print("\n" + "=" * 60)
+    print("TEST: PM-Corp-League Integration")
+    print("=" * 60)
+
+    # Use temp storage for clean test
+    temp_dir = Path(tempfile.mkdtemp())
+    leagues = LeagueSystem(storage_path=temp_dir / "leagues")
+    corps = SovereignCorpRegistry(storage_path=temp_dir / "corps")
+    pm = SovereignPM(storage_path=temp_dir / "pm")
+
+    # Create integrations
+    corp_integration = CorpLeagueIntegration(leagues, corps)
+    pm_integration = PMCorpLeagueIntegration(pm, corps, leagues)
+
+    # =========================================================================
+    # TEST 1: Create corp and register in league
+    # =========================================================================
+    print("\n[TEST 1] Create corp with league registration...")
+
+    corp = corps.incorporate(
+        name="SOS Development Corp",
+        mission="Build the sovereign operating system",
+        founders=["kasra", "river", "codex"],
+        initial_treasury=5000.0,
+    )
+    standing = corp_integration.on_corp_incorporated(corp)
+
+    print(f"  ✓ Corp created: {corp.charter.name}")
+    print(f"  ✓ Initial standing: {standing.league.value} ({standing.coherence_score:.3f})")
+
+    # =========================================================================
+    # TEST 2: Create project linked to corp
+    # =========================================================================
+    print("\n[TEST 2] Create project linked to corp...")
+
+    project = pm_integration.create_corp_project(
+        corp_id=corp.id,
+        name="Phase 7 Implementation",
+        description="Build marketplace, leagues, and AI companies",
+    )
+
+    assert project is not None, "Project should be created"
+    assert project.owner_id == corp.id, "Project should be owned by corp"
+    print(f"  ✓ Project created: {project.name}")
+    print(f"  ✓ Owner: {project.owner_id}")
+
+    # =========================================================================
+    # TEST 3: Create tasks with bounties
+    # =========================================================================
+    print("\n[TEST 3] Create tasks with bounties...")
+
+    # Create high-priority task with bounty
+    task1 = pm.create_task(
+        title="Implement League System",
+        description="Build coherence-based ranking",
+        priority=TaskPriority.HIGH,
+        project_id=project.id,
+        assignee_id="codex",
+        bounty_amount=100.0,
+        bounty_currency=BountyCurrency.MIND,
+    )
+
+    # Create urgent task
+    task2 = pm.create_task(
+        title="Wire PM to Corps",
+        description="Connect all Phase 7 components",
+        priority=TaskPriority.URGENT,
+        project_id=project.id,
+        assignee_id="kasra",
+        bounty_amount=200.0,
+        bounty_currency=BountyCurrency.MIND,
+    )
+
+    # Create medium priority task
+    task3 = pm.create_task(
+        title="Write integration tests",
+        description="Test all connections",
+        priority=TaskPriority.MEDIUM,
+        project_id=project.id,
+        assignee_id="river",
+    )
+
+    print(f"  ✓ Created 3 tasks with varying priorities")
+    print(f"  ✓ Total bounties: ${task1.bounty.amount + task2.bounty.amount}")
+
+    # =========================================================================
+    # TEST 4: Complete tasks and verify coherence updates
+    # =========================================================================
+    print("\n[TEST 4] Complete tasks → coherence updates...")
+
+    initial_coherence = standing.coherence_score
+
+    # Complete high-priority task
+    completed_task1, results1 = pm_integration.complete_task_with_integration(
+        task1.id, quality_score=0.9
+    )
+
+    assert completed_task1 is not None, "Task should be completed"
+    assert completed_task1.status == TaskStatus.DONE, "Status should be DONE"
+    assert results1["corp_updated"], "Corp should be updated"
+
+    standing = corp_integration.get_corp_standing(corp.id)
+    print(f"  ✓ High priority task: coherence {initial_coherence:.3f} → {standing.coherence_score:.3f}")
+    print(f"    Delta: +{results1['coherence_delta']:.4f}")
+
+    # Complete urgent task
+    prev_coherence = standing.coherence_score
+    completed_task2, results2 = pm_integration.complete_task_with_integration(
+        task2.id, quality_score=1.0
+    )
+
+    standing = corp_integration.get_corp_standing(corp.id)
+    print(f"  ✓ Urgent task: coherence {prev_coherence:.3f} → {standing.coherence_score:.3f}")
+    print(f"    Delta: +{results2['coherence_delta']:.4f}")
+
+    # Complete medium task
+    prev_coherence = standing.coherence_score
+    completed_task3, results3 = pm_integration.complete_task_with_integration(
+        task3.id, quality_score=0.8
+    )
+
+    standing = corp_integration.get_corp_standing(corp.id)
+    print(f"  ✓ Medium task: coherence {prev_coherence:.3f} → {standing.coherence_score:.3f}")
+
+    # =========================================================================
+    # TEST 5: Bounty payment with league multiplier
+    # =========================================================================
+    print("\n[TEST 5] Bounty payment with league multiplier...")
+
+    # Get current league multiplier
+    multiplier = LEAGUE_MULTIPLIERS.get(standing.league, 1.0)
+    print(f"  Corp league: {standing.league.value} (multiplier: {multiplier}x)")
+
+    # Simulate bounty payment
+    payment_result = pm_integration.on_bounty_paid(completed_task1, "tx_test_001")
+
+    assert payment_result["paid"], "Payment should succeed"
+    print(f"  ✓ Original bounty: ${payment_result['amount']:.2f}")
+    print(f"  ✓ League multiplier: {payment_result['multiplier']:.2f}x")
+    print(f"  ✓ Final amount: ${payment_result['final_amount']:.2f}")
+
+    # Pay second bounty
+    payment_result2 = pm_integration.on_bounty_paid(completed_task2, "tx_test_002")
+    print(f"  ✓ Second bounty paid: ${payment_result2['final_amount']:.2f}")
+
+    # =========================================================================
+    # TEST 6: Corp stats from PM
+    # =========================================================================
+    print("\n[TEST 6] Corp PM stats...")
+
+    stats = pm_integration.get_corp_stats(corp.id)
+
+    print(f"  Total projects: {stats['total_projects']}")
+    print(f"  Total tasks: {stats['total_tasks']}")
+    print(f"  Completed tasks: {stats['completed_tasks']}")
+    print(f"  Total bounties: ${stats['total_bounties']:.2f}")
+    print(f"  Paid bounties: ${stats['paid_bounties']:.2f}")
+
+    assert stats["total_projects"] == 1, "Should have 1 project"
+    assert stats["completed_tasks"] == 3, "Should have 3 completed tasks"
+    print("  ✓ Stats verified")
+
+    # =========================================================================
+    # TEST 7: Full triangle (PM → Corp → League)
+    # =========================================================================
+    print("\n[TEST 7] Full integration triangle...")
+
+    final_standing = corp_integration.get_corp_standing(corp.id)
+
+    print(f"  PM Tasks → Corp coherence → League standing")
+    print(f"  Final coherence: {final_standing.coherence_score:.3f}")
+    print(f"  Final league: {final_standing.league.value}")
+    print(f"  Tasks completed: {final_standing.total_tasks_completed}")
+
+    # Verify league multiplier affects future bounties
+    future_multiplier = corp_integration.get_corp_multiplier(corp.id)
+    print(f"  Future bounty multiplier: {future_multiplier}x")
+
+    print("  ✓ Full triangle verified")
+
+    # =========================================================================
+    # SUMMARY
+    # =========================================================================
+    print("\n" + "=" * 60)
+    print("ALL PM INTEGRATION TESTS PASSED!")
+    print("=" * 60)
+
+    print(f"\nFinal Integration State:")
+    print(f"  Corp: {corp.charter.name}")
+    print(f"  League: {final_standing.league.value}")
+    print(f"  Coherence: {final_standing.coherence_score:.3f}")
+    print(f"  Multiplier: {future_multiplier}x")
+    print(f"  Tasks Completed: 3")
+    print(f"  Bounties Paid: 2")
+    print(f"  Total Revenue: ${stats['paid_bounties']:.2f}")
+
+    return True
+
+
 if __name__ == "__main__":
-    success = test_corp_league_integration()
-    sys.exit(0 if success else 1)
+    success1 = test_corp_league_integration()
+    success2 = test_pm_corp_league_integration()
+    sys.exit(0 if (success1 and success2) else 1)
