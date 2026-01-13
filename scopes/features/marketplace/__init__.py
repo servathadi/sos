@@ -10,6 +10,7 @@ Components:
 - RevenueSharing: Distribute earnings to publishers
 - SovereignPM: Linear-like project management tool
 - LeagueSystem: Coherence-based competitive ranking
+- SovereignCorp: AI company template with QNFT governance
 
 Tool Types:
 - NATIVE: Built into SOS (web_search, filesystem, etc.)
@@ -37,6 +38,13 @@ League Tiers (Competitive):
 - PLATINUM: Expert (0.60+)
 - DIAMOND: Elite (0.75+)
 - MASTER: Legendary (0.90+)
+
+Corporate Lifecycle:
+- FOUNDING: Being incorporated
+- PRIVATE: Operating, not public
+- PUBLIC: IPO completed, tradeable shares
+- SUSPENDED: Frozen by governance
+- DISSOLVED: Shut down
 
 See: docs/docs/architecture/game_mechanics.md
 """
@@ -84,6 +92,24 @@ from scopes.features.marketplace.leagues import (
     get_league_system,
 )
 
+# Sovereign Corps (AI Companies)
+from scopes.features.marketplace.sovereign_corp import (
+    SovereignCorp,
+    SovereignCorpRegistry,
+    CorpCharter,
+    CorpFinancials,
+    CorpStatus,
+    CorpProposal,
+    CorpProposalType,
+    ExecutiveRole,
+    Executive,
+    ShareClass,
+    EquityShare,
+    Dividend,
+    DividendType,
+    get_corp_registry,
+)
+
 __all__ = [
     # Registry
     "ToolRegistry",
@@ -120,4 +146,19 @@ __all__ = [
     "LEAGUE_THRESHOLDS",
     "LEAGUE_REWARDS",
     "get_league_system",
+    # Sovereign Corps
+    "SovereignCorp",
+    "SovereignCorpRegistry",
+    "CorpCharter",
+    "CorpFinancials",
+    "CorpStatus",
+    "CorpProposal",
+    "CorpProposalType",
+    "ExecutiveRole",
+    "Executive",
+    "ShareClass",
+    "EquityShare",
+    "Dividend",
+    "DividendType",
+    "get_corp_registry",
 ]

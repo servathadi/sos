@@ -84,4 +84,14 @@
   - Streak bonuses for consistent performance
   - $MIND rewards distribution at season end
   - Entity types: AGENT, GUILD, HUMAN, SWARM
-- [ ] **AI Company Template**: Sovereign Corp logic with profit sharing.
+- [x] **AI Company Template**: Created `scopes/features/marketplace/sovereign_corp.py`:
+  - SovereignCorp class with full corporate lifecycle (FOUNDING → PRIVATE → PUBLIC)
+  - QNFT-anchored equity ownership (EquityShare with vesting)
+  - Share classes: FOUNDER (10x voting), COMMON, PREFERRED, OPTION
+  - CorpCharter with authorized shares, allocation rules, governance thresholds
+  - Executive roles: CEO, CTO, CFO, COO, BOARD, ADVISOR, WORKER
+  - Salary management and performance tracking
+  - Corporate governance with proposals and shareholder voting
+  - Dividend distribution (REGULAR, SPECIAL, REINVEST)
+  - IPO capability for public investment
+  - Integration with League system for competitive ranking
