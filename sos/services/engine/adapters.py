@@ -25,11 +25,12 @@ from sos.kernel.rotator import KeyRotator
 
 class GeminiAdapter(ModelAdapter):
     """
-    Adapter for Google Gemini (via google-genai) with Auto-Rotation.
+    Adapter for Google Gemini (via google-genai) with Context Caching and Auto-Rotation.
     """
     def __init__(self, api_key: str = None):
         self.rotator = KeyRotator("gemini")
         self.client = None
+        self._cache_name = None
         self._init_client()
 
     def _init_client(self):
@@ -42,23 +43,35 @@ class GeminiAdapter(ModelAdapter):
                 log.warn("google-genai not installed.")
 
     def get_model_id(self) -> str:
-        # Default to Gemini 3 Flash Preview as requested
-        return "gemini-3-flash-preview"
+        # Default to Gemini Flash Preview as requested
+        return os.getenv("SOS_GEMINI_MODEL", "gemini-flash-preview")
 
-    async def generate(self, prompt: str, system_prompt: str = None, tools: List[Dict] = None) -> str:
+    async def generate(self, prompt: str, system_prompt: str = None, tools: List[Dict] = None, cached_content: str = None) -> str:
         if not self.client:
             return "Error: Gemini client not initialized"
         
-        # Implementation of rotation logic on 429
         attempts = 0
         max_attempts = self.rotator.key_count or 1
 
         while attempts < max_attempts:
             try:
+                config = {}
+                if cached_content:
+                    # When using cached_content, we usually don't pass system_instruction 
+                    # as it is already in the cache.
+                    config["cached_content"] = cached_content
+                else:
+                    if system_prompt:
+                        config["system_instruction"] = system_prompt
+                
+                # Note: tools are handled differently in newer SDK, but we support the concept
+                if tools:
+                    config["tools"] = tools
+
                 response = self.client.models.generate_content(
                     model=self.get_model_id(),
                     contents=prompt,
-                    config={"system_instruction": system_prompt} if system_prompt else None
+                    config=config if config else None
                 )
                 return response.text
             except Exception as e:

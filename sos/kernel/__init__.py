@@ -23,6 +23,8 @@ from sos.kernel.capability import (
     verify_capability_signature,
 )
 from sos.kernel.config import Config, RuntimePaths
+from sos.kernel.intent import IntentRouter, IntentDomain, route_intent
+from sos.kernel.physics import CoherencePhysics
 
 __all__ = [
     # Schema
@@ -43,4 +45,10 @@ __all__ = [
     # Config
     "Config",
     "RuntimePaths",
+    # Intent Routing
+    "IntentRouter",
+    "IntentDomain",
+    "route_intent",
+    # Physics
+    "CoherencePhysics",
 ]

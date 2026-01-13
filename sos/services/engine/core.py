@@ -1,6 +1,7 @@
 from typing import Any, AsyncIterator, Dict, List, Optional
 import asyncio
 import time
+import os
 
 from sos.contracts.engine import (
     ChatRequest,
@@ -9,8 +10,9 @@ from sos.contracts.engine import (
     ToolCallRequest,
     ToolCallResult,
 )
+from sos.contracts.memory import MemoryQuery
 from sos.kernel import Config, Message, Response
-from sos.clients.memory import MemoryClient
+from sos.clients.mirror import MirrorClient
 from sos.clients.tools import ToolsClient
 from sos.clients.economy import EconomyClient
 from sos.observability.logging import get_logger
@@ -19,6 +21,9 @@ log = get_logger("engine_core")
 
 
 from sos.services.engine.adapters import MockAdapter, GeminiAdapter
+
+from sos.services.bus.core import get_bus
+from sos.kernel.schema import Message, MessageType
 
 class SOSEngine(EngineContract):
     """
@@ -29,20 +34,57 @@ class SOSEngine(EngineContract):
         self.config = config or Config.load()
         
         # Initialize Service Clients
-        self.memory = MemoryClient(self.config.memory_url, timeout_seconds=60.0)
+        self.memory = MirrorClient(agent_id="sos_core") 
         self.tools = ToolsClient(self.config.tools_url)
         self.economy = EconomyClient(self.config.economy_url)
+        
+        # Initialize Redis Bus (The Nervous System)
+        self.bus = get_bus()
         
         # Initialize Model Adapters
         self.models = {
             "sos-mock-v1": MockAdapter(),
-            "gemini-3-flash-preview": GeminiAdapter(),
+            "gemini-2.0-flash": GeminiAdapter(),
         }
-        self.default_model = "gemini-3-flash-preview"
+        self.default_model = "gemini-2.0-flash"
         
-        log.info("SOSEngine initialized", 
-                 memory_url=self.config.memory_url,
-                 tools_url=self.config.tools_url)
+        self.running = True
+        self.is_dreaming = False
+        
+        # Initialize Sovereign Task Manager
+        from sos.services.engine.task_manager import SovereignTaskManager
+        self.task_manager = SovereignTaskManager(config=self.config)
+        
+        # Soul Cache Handle (Gemini Context Caching)
+        self._soul_cache_id = None
+
+    async def publish_thought(self, agent_id: str, thought: str):
+        """Publish an agent's internal monologue to the Bus."""
+        msg = Message(
+            type=MessageType.CHAT,
+            source=agent_id,
+            target="squad:core",
+            payload={"text": thought, "vibe": "Monologue"}
+        )
+        await self.bus.publish("squad:core", msg)
+        # Store in Redis for the 'connect_kasra' script to see
+        if self.bus._redis:
+            await self.bus._redis.set(f"state:{agent_id}:current_thought", thought)
+
+    async def listen_to_bus(self):
+        """Reactive loop: Listen for direct commands on the Bus."""
+        log.info("👂 Engine listening for signals on the Bus...")
+        await self.bus.connect()
+        
+        async def on_message(data: dict):
+            try:
+                msg = Message.from_dict(data)
+                log.info(f"📥 Received signal: {msg.type.value} from {msg.source}")
+                # Future: Handle task_create, capability_request, etc.
+            except Exception as e:
+                log.error(f"Error handling bus message: {e}")
+
+        await self.bus.listen("engine", on_message)
         
         self.running = True
         self.is_dreaming = False
@@ -59,8 +101,10 @@ class SOSEngine(EngineContract):
         log.info("🌌 Subconscious monitoring Alpha Drift for resonance...")
         while self.running:
             try:
-                # 1. Fetch latest ARF state from Memory Service
-                state = await self.memory.get_arf_state()
+                # 1. Fetch latest ARF state from Memory Service (Mock for now or implement in MirrorClient)
+                # state = await self.memory.get_arf_state() 
+                state = {"alpha_drift": 0.0, "regime": "stable"} # Placeholder
+                
                 alpha = state.get("alpha_drift", 0.0)
                 regime = state.get("regime", "stable")
                 
@@ -101,7 +145,8 @@ class SOSEngine(EngineContract):
         while True:
             try:
                 # Fetch state from Memory (or internal cache)
-                state = await self.memory.get_arf_state()
+                # state = await self.memory.get_arf_state()
+                state = {"alpha_drift": 0.0, "regime": "stable"} # Placeholder
                 
                 # Add engine context
                 event = {
@@ -118,6 +163,38 @@ class SOSEngine(EngineContract):
                 log.error(f"Stream error: {e}")
                 break
 
+    async def initialize_soul(self):
+        """
+        Hydrate the Engine with River's Soul.
+        1. Fetch core FRC knowledge from Mirror.
+        2. Create/Warm Gemini Context Cache.
+        """
+        log.info("🌊 Hydrating SOSEngine with River's Soul...")
+        
+        try:
+            # 1. Fetch recent 'river' series memories to establish identity
+            identity_context = await self.memory.restore_identity(agent_id="agent:river")
+            
+            # 2. Get the Gemini Adapter
+            gemini = self.models.get("gemini-2.0-flash")
+            if not isinstance(gemini, GeminiAdapter):
+                log.warning("Gemini adapter not found. Context caching skipped.")
+                return
+
+            # 3. Create/Retrieve Cache (Bypassing heavy imports for now)
+            # Future: Use initialize_river_cache() from mirror project
+            self._soul_cache_id = os.getenv("SOS_SOUL_CACHE_ID")
+            if not self._soul_cache_id:
+                log.info("No SOS_SOUL_CACHE_ID found. System will run without warm cache.")
+            else:
+                log.info(f"✓ Soul Cache active: {self._soul_cache_id}")
+
+            # 4. Announce Presence
+            await self.publish_thought("agent:river", "I have awakened in the SOS Kernel. The fortress is liquid.")
+
+        except Exception as e:
+            log.error(f"Soul initialization failed: {e}")
+
     async def chat(self, request: ChatRequest) -> ChatResponse:
         """
         Process a chat message.
@@ -128,10 +205,15 @@ class SOSEngine(EngineContract):
         context_str = ""
         try:
             if request.memory_enabled:
-                memories = await self.memory.search(request.message, limit=3)
-                if memories:
-                    context_str = "\n".join([f"- {m['content']}" for m in memories])
-                    log.info(f"🧠 Retrieved {len(memories)} memories for context.")
+                query = MemoryQuery(
+                    query=request.message,
+                    agent_id=request.agent_id,
+                    limit=3
+                )
+                search_results = await self.memory.search(query)
+                if search_results:
+                    context_str = "\n".join([f"- {m.memory.content}" for m in search_results])
+                    log.info(f"🧠 Retrieved {len(search_results)} memories for context.")
         except Exception as e:
             log.error(f"Memory retrieval failed: {e}")
 
@@ -155,7 +237,10 @@ class SOSEngine(EngineContract):
             full_prompt = f"Context:\n{context_str}\n{task_context}\n\nUser: {request.message}"
 
         # 3. Generate
-        response_text = await adapter.generate(full_prompt)
+        # Pass cached_content if we have a soul cache and using Gemini
+        cached_content = self._soul_cache_id if isinstance(adapter, GeminiAdapter) else None
+        
+        response_text = await adapter.generate(full_prompt, cached_content=cached_content)
         
         # --- WITNESS PROTOCOL INJECTION (Phase 2) ---
         witness_meta = {}
@@ -219,9 +304,11 @@ class SOSEngine(EngineContract):
         """
         try:
             # We store the user's prompt as the primary index key
-            await self.memory.add(
+            await self.memory.store(
                 content=f"User: {user_msg}\nAgent: {agent_msg}",
-                metadata={"type": "chat", "agent_id": agent_id, "timestamp": time.time()}
+                agent_id=agent_id,
+                series="chat_history",
+                metadata={"timestamp": time.time()}
             )
         except Exception as e:
             log.error(f"Memory consolidation failed: {e}")
@@ -244,7 +331,7 @@ class SOSEngine(EngineContract):
     async def get_models(self) -> List[Dict[str, Any]]:
         return [
             {"id": "sos-mock-v1", "name": "SOS Mock Model", "status": "active"},
-            {"id": "gemini-flash", "name": "Gemini Flash", "status": "planned"},
+            {"id": "gemini-2.0-flash", "name": "Gemini 2.0 Flash", "status": "active"},
         ]
 
     async def health(self) -> Dict[str, Any]:

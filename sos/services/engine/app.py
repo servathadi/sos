@@ -6,6 +6,7 @@ from typing import Any, Dict
 
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse, PlainTextResponse, StreamingResponse
+from pydantic import BaseModel
 
 from sos import __version__
 from sos.kernel import Config
@@ -46,9 +47,10 @@ engine = SOSEngine()
 @app.on_event("startup")
 async def startup_event():
     import asyncio
-    # Start Subconscious Loops
-    asyncio.create_task(engine.dream_cycle())
-    log.info("🤖 Engine Subconscious Loops (Dreams) started.")
+    # Start SOSDaemon (Heartbeat, Dreams, Maintenance)
+    from sos.services.engine.daemon import start_daemon
+    await start_daemon()
+    log.info("🤖 SOSDaemon started (Heartbeat + Dreams + Maintenance)")
 
 
 @app.websocket("/ws/nervous-system/{agent_id}")
@@ -133,20 +135,46 @@ async def list_tasks():
     tasks = await swarm.list_pending_tasks()
     return {"tasks": tasks}
 
-@app.get("/health")
-async def health():
-    return {"status": "ok", "service": "engine"}
+class ConnectRequest(BaseModel):
+    action: str  # "publish" | "recall"
+    target: Optional[str] = "global"
+    payload: Dict[str, Any]
 
-@app.get("/stream/subconscious")
-async def stream_subconscious():
+@app.post("/v1/connect")
+async def nervous_system_gateway(req: ConnectRequest, request: Request):
     """
-    Real-time stream of the Engine's subconscious state (Alpha Drift).
-    Used by the Atelier UI to visualize dreaming.
+    Secure Gateway for External Agents to access the Nervous System.
+    Auth: X-SOS-API-KEY header.
     """
-    return StreamingResponse(
-        engine.subscribe_to_dreams(),
-        media_type="text/event-stream"
-    )
+    api_key = request.headers.get("X-SOS-API-KEY")
+    # In production, check against config.secrets or DB
+    # For Alpha, we accept a hardcoded key or match environment variable
+    valid_key = os.environ.get("SOS_MASTER_KEY", "sk-mumega-alpha-001")
+    
+    if api_key != valid_key:
+        return JSONResponse(status_code=401, content={"detail": "Invalid API Key"})
+
+    bus = get_bus()
+    await bus.connect()
+
+    if req.action == "publish":
+        # External agent speaking to the Hive
+        msg = Message(
+            type=MessageType.CHAT, # Use proper Enum
+            source="external_gateway",
+            target=req.target,
+            payload=req.payload
+        )
+        await bus.send(msg)
+        return {"status": "sent", "channel": req.target}
+
+    elif req.action == "recall":
+        # External agent querying memory
+        agent_id = req.target
+        memories = await bus.memory_recall(agent_id, limit=5)
+        return {"status": "success", "memories": memories}
+
+    return JSONResponse(status_code=400, content={"detail": "Unknown action"})
 
 @app.get("/health")
 async def health() -> Dict[str, Any]:

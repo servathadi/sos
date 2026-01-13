@@ -3,6 +3,7 @@ SOS Agent Registry - Discovery and management of agents.
 
 The registry maintains the list of known agents and their current status.
 """
+from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
