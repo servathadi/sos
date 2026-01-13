@@ -9,6 +9,7 @@ Components:
 - UsageMetering: Track tool usage for billing
 - RevenueSharing: Distribute earnings to publishers
 - SovereignPM: Linear-like project management tool
+- LeagueSystem: Coherence-based competitive ranking
 
 Tool Types:
 - NATIVE: Built into SOS (web_search, filesystem, etc.)
@@ -28,6 +29,14 @@ Tool Tiers (Rarity):
 - RARE: Enhanced features
 - EPIC: Advanced AI integration
 - LEGENDARY: Unique capabilities
+
+League Tiers (Competitive):
+- BRONZE: Entry level (coherence < 0.30)
+- SILVER: Emerging (0.30+)
+- GOLD: Proven (0.45+)
+- PLATINUM: Expert (0.60+)
+- DIAMOND: Elite (0.75+)
+- MASTER: Legendary (0.90+)
 
 See: docs/docs/architecture/game_mechanics.md
 """
@@ -63,6 +72,18 @@ from scopes.features.marketplace.tools import (
     get_sovereign_pm,
 )
 
+# League System
+from scopes.features.marketplace.leagues import (
+    LeagueSystem,
+    LeagueTier,
+    LeagueStanding,
+    Season,
+    CoherenceRecord,
+    LEAGUE_THRESHOLDS,
+    LEAGUE_REWARDS,
+    get_league_system,
+)
+
 __all__ = [
     # Registry
     "ToolRegistry",
@@ -90,4 +111,13 @@ __all__ = [
     "TaskView",
     "LinearSync",
     "get_sovereign_pm",
+    # League System
+    "LeagueSystem",
+    "LeagueTier",
+    "LeagueStanding",
+    "Season",
+    "CoherenceRecord",
+    "LEAGUE_THRESHOLDS",
+    "LEAGUE_REWARDS",
+    "get_league_system",
 ]

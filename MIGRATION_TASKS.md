@@ -75,5 +75,13 @@
   - Linear sync (bidirectional via GraphQL API)
   - Multiple views: list, kanban, timeline, calendar
   - Registered as EPIC tier tool (30 $MIND/month subscription)
-- [ ] **League Logic**: Implement Leagues (Bronze → Gold → Master based on coherence).
+- [x] **League Logic**: Created `scopes/features/marketplace/leagues.py`:
+  - League tiers: BRONZE → SILVER → GOLD → PLATINUM → DIAMOND → MASTER
+  - Coherence-based ranking (0.0-1.0 thresholds)
+  - Season system with time-limited competitions
+  - Leaderboard tracking (by domain, type, global)
+  - Promotion/demotion with cooldown protection
+  - Streak bonuses for consistent performance
+  - $MIND rewards distribution at season end
+  - Entity types: AGENT, GUILD, HUMAN, SWARM
 - [ ] **AI Company Template**: Sovereign Corp logic with profit sharing.
