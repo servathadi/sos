@@ -1,11 +1,12 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
 import axios from 'axios'
 
-interface Task {
+export interface Task {
   id: string
   title: string
   status: 'pending' | 'claimed' | 'done'
-  bounty: { amount: number; token: string }
+  bounty?: { amount: number; token: string }
+  imageUrl?: string
 }
 
 interface TasksState {
@@ -19,13 +20,15 @@ const initialState: TasksState = {
 }
 
 export const fetchTasks = createAsyncThunk('tasks/fetchTasks', async () => {
-  // In dev, we might mock this or proxy to backend
-  // For now, return mock data to prove UI
-  return [
-    { id: '1', title: 'Verify Tweet 492', status: 'pending', bounty: { amount: 10, token: 'MIND' } },
-    { id: '2', title: 'Audit Auth Module', status: 'pending', bounty: { amount: 50, token: 'MIND' } },
-    { id: '3', title: 'Design Logo', status: 'claimed', bounty: { amount: 100, token: 'MIND' } },
-  ]
+  // Real API Call via Nginx Proxy -> Engine
+  const response = await axios.get('/api/tasks')
+  // The API returns { tasks: [...] }
+  return response.data.tasks || []
+})
+
+export const completeTask = createAsyncThunk('tasks/completeTask', async (taskId: string) => {
+  await axios.post(`/api/tasks/${taskId}/complete`)
+  return taskId
 })
 
 const tasksSlice = createSlice({
@@ -47,6 +50,9 @@ const tasksSlice = createSlice({
       .addCase(fetchTasks.fulfilled, (state, action) => {
         state.status = 'succeeded'
         state.items = action.payload
+      })
+      .addCase(completeTask.fulfilled, (state, action) => {
+        state.items = state.items.filter(t => t.id !== action.payload)
       })
   },
 })

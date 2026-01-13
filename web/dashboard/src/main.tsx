@@ -4,6 +4,7 @@ import App from './App.tsx'
 import { CssBaseline, ThemeProvider, createTheme } from '@mui/material'
 import { Provider } from 'react-redux'
 import { store } from './store'
+import { TonConnectUIProvider } from '@tonconnect/ui-react'
 
 const darkTheme = createTheme({
   palette: {
@@ -49,11 +50,13 @@ const darkTheme = createTheme({
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <Provider store={store}>
-      <ThemeProvider theme={darkTheme}>
-        <CssBaseline />
-        <App />
-      </ThemeProvider>
-    </Provider>
+    <TonConnectUIProvider manifestUrl="https://deck.mumega.com/tonconnect-manifest.json?v=2">
+      <Provider store={store}>
+        <ThemeProvider theme={darkTheme}>
+          <CssBaseline />
+          <App />
+        </ThemeProvider>
+      </Provider>
+    </TonConnectUIProvider>
   </React.StrictMode>,
 )

@@ -1,12 +1,12 @@
 
-import React, { useState, useRef } from 'react';
-import { Paper, Box, Typography, Button } from '@mui/material';
-import { motion, useMotionValue, useTransform, AnimatePresence } from 'framer-motion';
+import React, { useRef } from 'react';
+import { Paper, Box, Typography } from '@mui/material';
+import { motion, useMotionValue, useTransform } from 'framer-motion';
 
 interface Task {
   id: string;
   title: string;
-  bounty: { amount: number; token: string };
+  bounty?: { amount: number; token: string };
   imageUrl?: string;
 }
 
@@ -16,7 +16,6 @@ interface WitnessCardProps {
 }
 
 const WitnessCard: React.FC<WitnessCardProps> = ({ task, onWitness }) => {
-  const [exitX, setExitX] = useState<number>(0);
   const startTime = useRef<number>(0);
   
   // Motion values for drag
@@ -40,11 +39,9 @@ const WitnessCard: React.FC<WitnessCardProps> = ({ task, onWitness }) => {
     
     if (info.offset.x > 100) {
       // Swipe Right: Approve (+1)
-      setExitX(500);
       onWitness(task.id, 1, latency);
     } else if (info.offset.x < -100) {
       // Swipe Left: Shred (-1)
-      setExitX(-500);
       onWitness(task.id, -1, latency);
     }
   };
@@ -91,7 +88,7 @@ const WitnessCard: React.FC<WitnessCardProps> = ({ task, onWitness }) => {
               alignItems: 'center' 
             }}>
               <Typography variant="body2" sx={{ color: 'secondary.main', fontWeight: 900 }}>
-                +{task.bounty.amount} {task.bounty.token}
+                +{task.bounty?.amount || 0} {task.bounty?.token || 'MIND'}
               </Typography>
               <Box sx={{ display: 'flex', gap: 1 }}>
                 <Typography variant="caption" sx={{ color: 'primary.main', opacity: 0.7 }}>

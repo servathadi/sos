@@ -121,6 +121,22 @@ async def chat_endpoint(request: ChatRequest):
     return await engine.chat(request)
 
 
+from sos.services.engine.swarm import get_swarm
+
+@app.get("/tasks")
+async def list_tasks():
+    """
+    List pending tasks from the Swarm Dispatcher.
+    SOS is agnostic; it returns whatever is in the repository.
+    """
+    swarm = get_swarm()
+    tasks = await swarm.list_pending_tasks()
+    return {"tasks": tasks}
+
+@app.get("/health")
+async def health():
+    return {"status": "ok", "service": "engine"}
+
 @app.get("/stream/subconscious")
 async def stream_subconscious():
     """
