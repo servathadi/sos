@@ -54,9 +54,17 @@
 
 ---
 
-## 🔮 The Backlog (Advanced Magic)
-
-### Phase 7: The Empire (Game & Strategy)
+## Phase 7: The Empire (Game & Strategy) - IN PROGRESS
+- [x] **Tool Registry**: Created `scopes/features/marketplace/registry.py`:
+  - ToolRegistry with registration, versioning, and discovery
+  - Tool tiers: COMMON → RARE → EPIC → LEGENDARY
+  - Pricing models: FREE, PER_USE, SUBSCRIPTION, ONE_TIME, AUCTION
+  - License management with expiration and usage limits
+  - Usage metering and billing integration
+  - Revenue sharing (70% publisher, 30% platform)
+  - Ratings and reviews system
+  - 5 native tools registered (web_search, filesystem, spore, wallet, ui_asset)
+  - Search by category, tags, publisher, tier
 - [ ] **League Logic**: Implement Leagues (Bronze → Gold → Master based on coherence).
-- [ ] **Marketplace Contract**: P2P Market for tools/data.
 - [ ] **AI Company Template**: Sovereign Corp logic with profit sharing.
+- [ ] **SovereignPM**: Proof-of-concept PM tool (Linear-like).
