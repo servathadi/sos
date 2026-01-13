@@ -8,6 +8,7 @@ Components:
 - ToolMarketplace: Buy, sell, and license tools
 - UsageMetering: Track tool usage for billing
 - RevenueSharing: Distribute earnings to publishers
+- SovereignPM: Linear-like project management tool
 
 Tool Types:
 - NATIVE: Built into SOS (web_search, filesystem, etc.)
@@ -46,7 +47,24 @@ from scopes.features.marketplace.registry import (
     get_tool_registry,
 )
 
+# Reference tool implementations
+from scopes.features.marketplace.tools import (
+    SovereignPM,
+    Task,
+    TaskStatus,
+    TaskPriority,
+    Project,
+    Label,
+    Bounty,
+    BountyCurrency,
+    TaskFilter,
+    TaskView,
+    LinearSync,
+    get_sovereign_pm,
+)
+
 __all__ = [
+    # Registry
     "ToolRegistry",
     "Tool",
     "ToolType",
@@ -59,4 +77,17 @@ __all__ = [
     "ToolLicense",
     "LicenseType",
     "get_tool_registry",
+    # SovereignPM
+    "SovereignPM",
+    "Task",
+    "TaskStatus",
+    "TaskPriority",
+    "Project",
+    "Label",
+    "Bounty",
+    "BountyCurrency",
+    "TaskFilter",
+    "TaskView",
+    "LinearSync",
+    "get_sovereign_pm",
 ]

@@ -65,6 +65,15 @@
   - Ratings and reviews system
   - 5 native tools registered (web_search, filesystem, spore, wallet, ui_asset)
   - Search by category, tags, publisher, tier
+- [x] **SovereignPM**: Created `scopes/features/marketplace/tools/sovereign_pm.py`:
+  - Linear-like project management with blockchain payments
+  - Full task CRUD with rich metadata (title, description, priority, labels)
+  - Project organization and label system
+  - Bounty system with $MIND, SOL, TON payment support
+  - Coherence-based payment multipliers (quality = higher payout)
+  - Dependency tracking (blocked_by, blocks)
+  - Linear sync (bidirectional via GraphQL API)
+  - Multiple views: list, kanban, timeline, calendar
+  - Registered as EPIC tier tool (30 $MIND/month subscription)
 - [ ] **League Logic**: Implement Leagues (Bronze → Gold → Master based on coherence).
 - [ ] **AI Company Template**: Sovereign Corp logic with profit sharing.
-- [ ] **SovereignPM**: Proof-of-concept PM tool (Linear-like).
