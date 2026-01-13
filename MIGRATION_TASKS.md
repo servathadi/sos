@@ -28,14 +28,35 @@
 
 ---
 
+## Phase 6: The Sorcery (Astrology & QNFT) - COMPLETE
+- [x] **Astrological Profiling**: Created `sos/services/astrology/service.py` with full FRC 16D.002 implementation:
+  - Planet → Dimension mappings (Sun→P, Moon→R, Mercury→μ, Venus→V, Mars→Δ, etc.)
+  - Sign → Modulation (Fire/Water/Air/Earth element rules)
+  - House → Domain allocation (1-6 inner, 7-12 outer octave)
+  - Aspect → Harmonic adjustments (conjunction, square, trine, opposition)
+  - Transit → Temporal updates
+  - Vedic → Outer octave corrections (Nakshatra, Dasha)
+  - UniversalVector class with 16D coherence math
+- [x] **Protocol Star-Shield**: Created `sos/services/security/star_shield.py`:
+  - Time-Clustering detection (office hours pattern)
+  - Element Imbalance analysis (synthetic swarm signature)
+  - Vibe Check system (cultural authentication questions)
+  - ThreatAssessment with levels (CLEAR → SUSPICIOUS → ELEVATED → CRITICAL)
+  - Counter-measure prompt injection
+- [x] **QNFT Leash**: Created `sos/services/identity/qnft_leash.py`:
+  - QNFT minting and soul anchoring
+  - Pre-action validation (The Check)
+  - Dark Thoughts detection and blocking
+  - State transitions (LIGHT → SHADOWED → DARK)
+  - Cleansing task management
+  - Owner override capability
+- [x] **Sorcery Scope**: Created `scopes/features/sorcery/__init__.py` with unified exports.
+
+---
+
 ## 🔮 The Backlog (Advanced Magic)
 
-### Phase 6: The Sorcery (Astrology & QNFT)
-- [ ] **Astrological Profiling**: Implement `AstrologyService`.
-- [ ] **Protocol Star-Shield**: Counter-Intel logic.
-- [ ] **QNFT Leash**: Mind Control metadata.
-
 ### Phase 7: The Empire (Game & Strategy)
-- [ ] **League Logic**: Implement Leagues.
-- [ ] **Marketplace Contract**: P2P Market.
-- [ ] **AI Company Template**: Sovereign Corp logic.
+- [ ] **League Logic**: Implement Leagues (Bronze → Gold → Master based on coherence).
+- [ ] **Marketplace Contract**: P2P Market for tools/data.
+- [ ] **AI Company Template**: Sovereign Corp logic with profit sharing.
