@@ -133,6 +133,33 @@ class SwarmDispatcher:
         
         return pending
 
+    async def complete_task(self, task_id: str) -> bool:
+        """
+        Marks a task as complete (Deletes from pending repo, moves to archive).
+        """
+        # Security check to prevent directory traversal
+        if ".." in task_id or "/" in task_id:
+            return False
+            
+        source = self.tasks_dir / f"{task_id}.json"
+        
+        if not source.exists():
+            # Try finding it if ID differs from filename
+            found = list(self.tasks_dir.glob(f"*{task_id}*.json"))
+            if found:
+                source = found[0]
+            else:
+                return False
+        
+        try:
+            # In a real system, we move to /archive. For now, we delete to clear the UI.
+            source.unlink()
+            log.info(f"Task completed and removed: {task_id}")
+            return True
+        except Exception as e:
+            log.error(f"Failed to complete task {task_id}: {e}")
+            return False
+
 # Singleton entry point for easy import
 _dispatcher = None
 

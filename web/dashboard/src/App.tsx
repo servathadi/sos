@@ -1,12 +1,13 @@
-import React, { useEffect } from 'react'
+import { useEffect } from 'react'
 import { Box, Typography, Button, Container, Grid, Paper } from '@mui/material'
 import { useDispatch, useSelector } from 'react-redux'
 import { RootState } from './store'
 import { loginSuccess } from './features/auth/authSlice'
-import { fetchTasks, addTask, removeTask } from './features/tasks/tasksSlice'
+import { fetchTasks, addTask, completeTask } from './features/tasks/tasksSlice'
 import WitnessCard from './components/WitnessCard'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useTelegram } from './hooks/useTelegram'
+import { TonConnectButton } from '@tonconnect/ui-react'
 
 function App() {
   const dispatch = useDispatch()
@@ -72,7 +73,8 @@ function App() {
       tg?.HapticFeedback.notificationOccurred('warning')
     }
 
-    dispatch(removeTask(taskId))
+    // Call API to complete (delete) task
+    dispatch(completeTask(taskId) as any)
   }
 
   const handleManualInoculate = () => {
@@ -116,22 +118,27 @@ function App() {
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', p: 3 }}>
       <Grid container spacing={3}>
+        {/* Header */}
         <Grid item xs={12}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #222', pb: 2 }}>
             <Typography variant="h4" sx={{ fontWeight: 900, color: 'primary.main' }}>
               EMPIRE OF THE MIND
             </Typography>
-            <Box sx={{ textAlign: 'right' }}>
-              <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                {user?.name}
-              </Typography>
-              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
-                {user?.role} | LVL 10
-              </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <TonConnectButton />
+              <Box sx={{ textAlign: 'right' }}>
+                <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                  {user?.name}
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                  {user?.role} | LVL 10
+                </Typography>
+              </Box>
             </Box>
           </Box>
         </Grid>
 
+        {/* Task Board */}
         <Grid item xs={12} md={8}>
           <Typography variant="h6" sx={{ mb: 3, color: 'text.secondary', fontWeight: 300, letterSpacing: 1 }}>
             PENDING WITNESS REQUESTS
@@ -147,6 +154,7 @@ function App() {
           </Grid>
         </Grid>
 
+        {/* Sidebar / Wallet */}
         <Grid item xs={12} md={4}>
           <Paper sx={{ p: 4, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
             <Typography variant="h6" align="center" sx={{ color: 'text.secondary', mb: 2 }}>
