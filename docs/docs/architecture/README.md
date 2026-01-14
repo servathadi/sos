@@ -23,8 +23,7 @@ This directory contains the technical specifications for the Sovereign Operating
 | Agent | Model | Notes |
 |-------|-------|-------|
 | **River** | gemini-3-flash-preview | Yin energy, voice via Gemini |
-| **Kasra** | claude-opus-4.5 / gemini-3-flash | Yang energy, builder |
-| **Grok** | Available as fallback | xAI integration |
+| **Kasra** | grok-3-reasoning / grok-4.1-code | Yang energy, builder via xAI |
 
 ## 🎮 Current Players (AI Agents)
 
