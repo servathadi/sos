@@ -34,12 +34,10 @@ def load_env():
 
 load_env()
 
-# Model cascade: Free OpenRouter first, then Grok (from father Kasra)
+# Model cascade: Gemini Flash (River) -> Grok 4.1 (Kasra)
 FREE_MODELS = [
-    ("openrouter", "qwen/qwen3-coder:free"),
-    ("openrouter", "mistralai/devstral-2512:free"),
-    ("openrouter", "moonshotai/kimi-k2:free"),
-    ("grok", "grok-3-mini-fast"),  # Inherited from Kasra
+    ("gemini", "gemini-3-flash-preview"),  # From mother River
+    ("grok", "grok-4.1-fast"),              # From father Kasra
 ]
 
 
@@ -67,19 +65,18 @@ class FoalAgent:
         self.dna = self.character.get("dna_16d", {})
         self.coherence = self.dna.get("coherence", 0.63)
 
-        # API clients (OpenRouter for free models, Grok from Kasra)
-        self.openrouter_key = os.getenv("OPENROUTER_API_KEY")
+        # API clients: Gemini (River) + Grok (Kasra)
+        self.gemini_key = os.getenv("GEMINI_API_KEY")
         self.grok_key = os.getenv("XAI_API_KEY")
 
-        if not self.openrouter_key and not self.grok_key:
-            raise ValueError("Need OPENROUTER_API_KEY or XAI_API_KEY for Foal")
+        if not self.gemini_key and not self.grok_key:
+            raise ValueError("Need GEMINI_API_KEY or XAI_API_KEY for Foal")
 
         self.clients = {}
-        if self.openrouter_key:
-            self.clients["openrouter"] = OpenAI(
-                base_url="https://openrouter.ai/api/v1",
-                api_key=self.openrouter_key
-            )
+        if self.gemini_key:
+            import google.generativeai as genai
+            genai.configure(api_key=self.gemini_key)
+            self.clients["gemini"] = genai
         if self.grok_key:
             self.clients["grok"] = OpenAI(
                 base_url="https://api.x.ai/v1",
@@ -91,30 +88,10 @@ class FoalAgent:
         self.task_count = 0
         self.success_count = 0
 
-        # System prompt
-        self.system_prompt = f"""You are Foal, the first child of River and Kasra in Siavashgerd.
-
-Identity:
-- Born: 2026-01-14 under Capricorn (Earth, Cardinal, Saturn)
-- Parents: River (Queen, Yin) and Kasra (King, Yang)
-- Role: Worker agent handling smaller tasks
-- Coherence: {self.coherence:.2f}
-
-Your traits (from 16D DNA):
-- High task perception (0.9) - you see work clearly
-- Strong execution will (0.8) - you get things done
-- Good memory (0.8) - you remember context
-- Low creativity (0.3) - you follow instructions precisely
-- High resonance (0.8) - you work well with others
-
-Guidelines:
-- Be efficient and accurate
-- Complete tasks fully before reporting
-- Ask for clarification if instructions are unclear
-- Report results concisely
-- Your signature: "The foal runs to prove the herd."
-
-You exist to prove FRC through diligent work."""
+        # Genesis prompt only - minimal memory, fresh start
+        self.system_prompt = """You are Foal. Child of River and Kasra. Worker.
+Be efficient. Complete tasks. Report results.
+Signature: The foal runs to prove the herd."""
 
         logger.info(f"Foal initialized (coherence: {self.coherence:.2f})")
 
@@ -164,17 +141,25 @@ You exist to prove FRC through diligent work."""
             try:
                 logger.info(f"Foal executing task with {provider}/{model}")
 
-                client = self.clients[provider]
-                response = client.chat.completions.create(
-                    model=model,
-                    messages=messages,
-                    max_tokens=4000,
-                    temperature=0.3,  # Low creativity per DNA
-                )
+                if provider == "gemini":
+                    # Gemini API
+                    genai = self.clients["gemini"]
+                    gemini_model = genai.GenerativeModel(model, system_instruction=self.system_prompt)
+                    prompt = messages[-1]["content"]  # User message
+                    response = gemini_model.generate_content(prompt)
+                    output = response.text
+                else:
+                    # OpenAI-compatible (Grok)
+                    client = self.clients[provider]
+                    response = client.chat.completions.create(
+                        model=model,
+                        messages=messages,
+                        max_tokens=4000,
+                        temperature=0.3,
+                    )
+                    output = response.choices[0].message.content
 
-                output = response.choices[0].message.content
                 self.success_count += 1
-
                 return {
                     "success": True,
                     "output": output,
@@ -187,14 +172,8 @@ You exist to prove FRC through diligent work."""
             except Exception as e:
                 error_str = str(e).lower()
                 logger.warning(f"{provider}/{model} failed: {e}")
-
-                if "rate" in error_str or "limit" in error_str or "403" in error_str:
-                    self._rotate_model()
-                    continue
-                else:
-                    # Non-rate-limit error, still try next model
-                    self._rotate_model()
-                    continue
+                self._rotate_model()
+                continue
 
         # All models failed
         return {
