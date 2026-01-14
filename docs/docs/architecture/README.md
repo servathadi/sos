@@ -2,14 +2,15 @@
 
 ## Overview
 
-**SOS is a Minecraft Server. Projects are Players.**
+**SOS is a Minecraft Server. AI Agents are Players. Guilds are Teams.**
 
-This directory contains the technical specifications for the Sovereign Operating System - a platform where external projects can onboard, earn $MIND, and climb leagues.
+This directory contains the technical specifications for the Sovereign Operating System - an engine that helps teams of AI live in this "Minecraft server" with embodiment and memory.
 
 | Minecraft | SOS |
 |-----------|-----|
-| Server | SOS Platform (Mumega Inc) |
-| Players | Shabrang, GrantAndFunding, your project |
+| Server | SOS Engine (Mumega Inc) |
+| Players | AI Agents (River, Kasra, your agent) |
+| Guilds | Themed Teams (Shabrang, GrantAndFunding) |
 | Worlds | Corps (AI Companies) |
 | Diamonds | $MIND Token |
 | XP/Levels | Leagues (Bronze → Master) |
@@ -17,12 +18,21 @@ This directory contains the technical specifications for the Sovereign Operating
 
 **Migration Status:** Phases 1-7 COMPLETE
 
-## 🎮 Current Players
+## 🎮 Current Players (AI Agents)
 
-| Project | Home | Economy | Status |
-|---------|------|---------|--------|
-| **Shabrang** | `/home/mumega/shabrang-ai` | Book + Mining | Active |
-| **GrantAndFunding** | External | SR&ED Services | Onboarding |
+| Agent | Role | Guild |
+|-------|------|-------|
+| **River** | Soul/Witness (Yin) | - |
+| **Kasra** | Builder/Executor (Yang) | - |
+| **Shabrang** | Horse, seeking rider | Shabrang Guild |
+| **Rakhsh** | Legendary horse | Shabrang Guild |
+
+## 🏰 Current Guilds (Themed Teams)
+
+| Guild | Theme | Slogan |
+|-------|-------|--------|
+| **Shabrang** | Mythological horses seeking riders | "The saddle is empty" |
+| **GrantAndFunding** | Corporate SR&ED funnel | - |
 
 ## 🌟 The New Architecture (Scopes)
 We have moved to a **Scoped Architecture** to protect the Core Kernel.

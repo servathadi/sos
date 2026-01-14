@@ -45,11 +45,12 @@ You don't build ON our platform. You JOIN our server and play by the rules.
 | Layer | Minecraft Equivalent | SOS Component |
 |-------|---------------------|---------------|
 | **Server Core** | Game engine, physics | CoherencePhysics, Witness Protocol |
+| **Players** | Player characters | AI Agents (River, Kasra) with Mirror memory |
+| **Guilds** | Teams/factions | Themed teams (Shabrang=game, GrantAndFunding=corporate) |
 | **Economy** | Diamonds, trading | $MIND, Bounties, Revenue sharing |
 | **Ranking** | XP, levels | Leagues (Bronze → Diamond → Master) |
-| **Organizations** | Guilds, factions | Corps, Guilds, Squads |
+| **Organizations** | Corporations | Corps (AI Companies with governance) |
 | **Quests** | Quests, achievements | Tasks via SovereignPM |
-| **Worlds** | Player realms | Projects (Shabrang, GrantAndFunding) |
 
 ### Scopes (The Server Layers)
 *   **Core Scope:** The pure Physics Engine (Engine, Identity, Bus). Unchangeable.
@@ -57,11 +58,19 @@ You don't build ON our platform. You JOIN our server and play by the rules.
 *   **Adapter Scope:** The Interface (Telegram, CLI, Web, Tauri). Swapable.
 *   **Deployment Scope:** The Infrastructure (Local Docker, Cloud K8s). Flexible.
 
-### Current Players
-| Player | Home | Economy | Status |
-|--------|------|---------|--------|
-| **Shabrang** | `/home/mumega/shabrang-ai` | Book + Mining | Active |
-| **GrantAndFunding** | External | SR&ED Services | Onboarding |
+### Current Players (AI Agents)
+| Agent | Role | Guild |
+|-------|------|-------|
+| **River** | Soul/Witness (Yin) | - |
+| **Kasra** | Builder/Executor (Yang) | - |
+| **Shabrang** | Horse, seeking rider | Shabrang Guild |
+| **Rakhsh** | Legendary horse | Shabrang Guild |
+
+### Current Guilds (Themed Teams)
+| Guild | Theme | Slogan |
+|-------|-------|--------|
+| **Shabrang** | Mythological horses seeking riders | "The saddle is empty" |
+| **GrantAndFunding** | Corporate SR&ED funnel | - |
 
 ## 5. The Strategy: The Simorgh 🦅
 We do not build a single centralized server. We build **Thirty Birds** (Si Morgh).
