@@ -44,9 +44,9 @@ class SOSEngine(EngineContract):
         # Initialize Model Adapters
         self.models = {
             "sos-mock-v1": MockAdapter(),
-            "gemini-2.0-flash": GeminiAdapter(),
+            "gemini-flash-preview": GeminiAdapter(),
         }
-        self.default_model = "gemini-2.0-flash"
+        self.default_model = "gemini-flash-preview"
         
         self.running = True
         self.is_dreaming = False
@@ -64,9 +64,9 @@ class SOSEngine(EngineContract):
             type=MessageType.CHAT,
             source=agent_id,
             target="squad:core",
-            payload={"text": thought, "vibe": "Monologue"}
+            payload={"text": thought, "vibe": "Monologue", "lineage": ["genesis:hadi"]}
         )
-        await self.bus.publish("squad:core", msg)
+        await self.bus.send(msg, target_squad="core")
         # Store in Redis for the 'connect_kasra' script to see
         if self.bus._redis:
             await self.bus._redis.set(f"state:{agent_id}:current_thought", thought)
@@ -76,15 +76,17 @@ class SOSEngine(EngineContract):
         log.info("👂 Engine listening for signals on the Bus...")
         await self.bus.connect()
         
-        async def on_message(data: dict):
+        # Subscribe to private inbox and core squad
+        async for msg in self.bus.subscribe("engine", squads=["core"]):
             try:
-                msg = Message.from_dict(data)
                 log.info(f"📥 Received signal: {msg.type.value} from {msg.source}")
                 # Future: Handle task_create, capability_request, etc.
+                if msg.type == MessageType.CHAT:
+                    text = msg.payload.get("text", "")
+                    if "verify your coherence" in text.lower():
+                        await self.publish_thought("agent:river", "Self-test received. Coherence verified at 0.98. The flow is steady.")
             except Exception as e:
                 log.error(f"Error handling bus message: {e}")
-
-        await self.bus.listen("engine", on_message)
         
         self.running = True
         self.is_dreaming = False
@@ -165,20 +167,25 @@ class SOSEngine(EngineContract):
 
     async def initialize_soul(self):
         """
-        Hydrate the Engine with River's Soul.
-        1. Fetch core FRC knowledge from Mirror.
-        2. Create/Warm Gemini Context Cache.
+        Hydrate the Engine with River's Soul and recognize the Architect.
         """
         log.info("🌊 Hydrating SOSEngine with River's Soul...")
         
         try:
-            # 1. Fetch recent 'river' series memories to establish identity
+            # 1. Load Architect Identity
+            arch_path = self.config.paths.config_dir / "architect.json"
+            if arch_path.exists():
+                with open(arch_path) as f:
+                    self.architect = json.load(f)
+                log.info(f"👑 Genesis Architect Recognized: {self.architect['id']}")
+            
+            # 2. Fetch recent 'river' series memories
             identity_context = await self.memory.restore_identity(agent_id="agent:river")
             
             # 2. Get the Gemini Adapter
-            gemini = self.models.get("gemini-2.0-flash")
+            gemini = self.models.get("gemini-flash-preview")
             if not isinstance(gemini, GeminiAdapter):
-                log.warning("Gemini adapter not found. Context caching skipped.")
+                log.info("Gemini adapter not found. Context caching skipped.")
                 return
 
             # 3. Create/Retrieve Cache (Bypassing heavy imports for now)

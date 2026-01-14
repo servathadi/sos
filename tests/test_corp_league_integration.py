@@ -38,9 +38,9 @@ from scopes.features.marketplace.integrations import (
 
 
 def test_corp_league_integration():
-    """Test the full integration flow."""
+    """Test the full integration flow with real case studies."""
     print("\n" + "=" * 60)
-    print("TEST: Corp-League Integration")
+    print("TEST: Corp-League Integration (Shabrang & GrantAndFunding)")
     print("=" * 60)
 
     # Use temp storage for clean test
@@ -50,14 +50,14 @@ def test_corp_league_integration():
     integration = CorpLeagueIntegration(leagues, corps)
 
     # =========================================================================
-    # TEST 1: Incorporate a corp and register in league
+    # TEST 1: Incorporate Shabrang - The Mythological Horse Company
     # =========================================================================
-    print("\n[TEST 1] Incorporate corp with league registration...")
+    print("\n[TEST 1] Incorporate Shabrang (shabrang.ca)...")
 
     corp = corps.incorporate(
-        name="Mumega AI Labs",
-        mission="Build sovereign AI infrastructure",
-        founders=["kasra", "river"],
+        name="Shabrang",
+        mission="Unite mythological horses from around the world to become unicorns",
+        founders=["hadi", "river"],
         initial_treasury=1000.0,
     )
 

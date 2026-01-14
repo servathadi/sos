@@ -24,6 +24,7 @@ class MemoryType(Enum):
     EPISODE = "episode" # Event/conversation memory
     SKILL = "skill"     # Learned capability
     CONTEXT = "context" # Contextual/session memory
+    TRUTH = "epistemic_truth" # Core FRC truths
 
 
 @dataclass
@@ -34,10 +35,14 @@ class Memory:
     Attributes:
         id: Unique memory identifier
         content: The actual memory content
-        embedding: Vector embedding (if computed)
-        memory_type: Type of memory
         agent_id: Agent this memory belongs to
+        series: Series identifier (e.g., 'river', 'kasra')
         importance: Importance score (0.0 - 1.0)
+        memory_type: Type of memory
+        epistemic_truths: List of verified truths in this engram
+        core_concepts: List of key concepts
+        affective_vibe: Emotional/vibe state
+        embedding: Vector embedding (if computed)
         access_count: Number of times retrieved
         created_at: When memory was created
         accessed_at: Last access time
@@ -47,9 +52,13 @@ class Memory:
     content: str
     agent_id: str
     id: Optional[str] = None
-    embedding: Optional[list[float]] = None
+    series: str = "default"
     memory_type: MemoryType = MemoryType.ENGRAM
     importance: float = 0.5
+    epistemic_truths: list[str] = field(default_factory=list)
+    core_concepts: list[str] = field(default_factory=list)
+    affective_vibe: str = "Neutral"
+    embedding: Optional[list[float]] = None
     access_count: int = 0
     created_at: datetime = field(default_factory=datetime.utcnow)
     accessed_at: Optional[datetime] = None
@@ -98,8 +107,12 @@ class MemoryContract(ABC):
         self,
         content: str,
         agent_id: str,
+        series: str = "default",
         memory_type: MemoryType = MemoryType.ENGRAM,
         importance: float = 0.5,
+        epistemic_truths: Optional[list[str]] = None,
+        core_concepts: Optional[list[str]] = None,
+        affective_vibe: str = "Neutral",
         metadata: Optional[dict] = None,
         capability: Optional[Capability] = None,
     ) -> StoreResult:
@@ -109,8 +122,12 @@ class MemoryContract(ABC):
         Args:
             content: Memory content
             agent_id: Agent storing the memory
+            series: Series identifier
             memory_type: Type of memory
             importance: Importance score
+            epistemic_truths: List of truths
+            core_concepts: List of concepts
+            affective_vibe: Emotional state
             metadata: Additional metadata
             capability: Authorization capability
 

@@ -47,10 +47,17 @@ engine = SOSEngine()
 @app.on_event("startup")
 async def startup_event():
     import asyncio
+    # Initialize River's Soul (Memory + Cache)
+    await engine.initialize_soul()
+    
     # Start SOSDaemon (Heartbeat, Dreams, Maintenance)
     from sos.services.engine.daemon import start_daemon
     await start_daemon()
-    log.info("🤖 SOSDaemon started (Heartbeat + Dreams + Maintenance)")
+
+    # Start listening for signals on the Redis Bus
+    asyncio.create_task(engine.listen_to_bus())
+    
+    log.info("🤖 Engine fully awake and listening to the Bus.")
 
 
 @app.websocket("/ws/nervous-system/{agent_id}")

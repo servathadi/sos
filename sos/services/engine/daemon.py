@@ -301,28 +301,33 @@ class SOSDaemon:
             log.error(f"Failed to broadcast status: {e}")
 
     async def collect_metrics(self) -> DaemonMetrics:
-        """Collect current system metrics."""
+        """Collect current system metrics from Mirror and Bus."""
         metrics = DaemonMetrics()
 
-        # Try to get ARF state from Memory Service
+        # 1. Fetch metrics from Mirror (Real Soul)
         try:
-            from sos.clients.memory import MemoryClient
-            memory = MemoryClient(self.config.memory_url)
-            arf_state = await memory.get_arf_state()
-            metrics.alpha_drift = arf_state.get("alpha_drift", 0.0)
-            metrics.regime = arf_state.get("regime", "stable")
+            from sos.clients.mirror import MirrorClient
+            mirror = MirrorClient(agent_id="sos_daemon")
+            # Query status/stats
+            stats = await mirror.health()
+            metrics.memories_count = stats.get("total_engrams", 0)
+            
+            # Lineage Check
+            log.debug("Tracing genetic lineage for health report...")
         except Exception as e:
-            log.debug(f"Could not fetch ARF state: {e}")
+            log.debug(f"Could not fetch Mirror metrics: {e}")
 
-        # Get agent status from Redis
+        # 2. Get agent status from Redis (Nervous System)
         redis = await self._get_redis()
         if redis:
             try:
                 keys = await redis.keys("state:agent:*:status")
                 for key in keys:
-                    agent_id = key.split(":")[2]
-                    status = await redis.get(key)
-                    metrics.agent_status[agent_id] = status or "unknown"
+                    parts = key.split(":")
+                    if len(parts) >= 3:
+                        agent_id = parts[2]
+                        status = await redis.get(key)
+                        metrics.agent_status[agent_id] = status or "unknown"
             except Exception as e:
                 log.debug(f"Could not fetch agent status: {e}")
 

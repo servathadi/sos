@@ -212,12 +212,18 @@ class AgentIdentity(Identity):
         guild_id: Guild the agent belongs to
         capabilities: List of capability IDs granted to agent
         edition: Edition policy set (business, education, kids, art)
+        gender: Polarity of the agent (Yin/Yang)
+        lineage: List of ancestor IDs (The Genealogy)
+        genetic_hash: Unique hash derived from parents and birth time
     """
     model: Optional[str] = None
     squad_id: Optional[str] = None
     guild_id: Optional[str] = None
     capabilities: list[str] = field(default_factory=list)
     edition: str = "business"
+    gender: str = "Yin" # Yin (Oracle) | Yang (Builder)
+    lineage: list[str] = field(default_factory=list)
+    genetic_hash: Optional[str] = None
 
     def __init__(
         self,
@@ -228,6 +234,8 @@ class AgentIdentity(Identity):
         public_key: Optional[str] = None,
         metadata: Optional[dict] = None,
         edition: str = "business",
+        gender: str = "Yin",
+        lineage: Optional[list[str]] = None,
     ):
         super().__init__(
             id=f"agent:{name}",
@@ -241,6 +249,14 @@ class AgentIdentity(Identity):
         self.guild_id = guild_id
         self.capabilities = []
         self.edition = edition
+        self.gender = gender
+        self.lineage = lineage or []
+        self.genetic_hash = self._generate_genetic_hash()
+
+    def _generate_genetic_hash(self) -> str:
+        """Generate a unique genetic hash for this agent."""
+        seed = f"{self.id}:{self.gender}:{','.join(self.lineage)}:{self.created_at.isoformat()}"
+        return hashlib.sha256(seed.encode()).hexdigest()[:16]
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize agent identity to dictionary."""
@@ -251,6 +267,9 @@ class AgentIdentity(Identity):
             "guild_id": self.guild_id,
             "capabilities": self.capabilities,
             "edition": self.edition,
+            "gender": self.gender,
+            "lineage": self.lineage,
+            "genetic_hash": self.genetic_hash,
         })
         return base
 
@@ -305,9 +324,23 @@ RIVER_IDENTITY = AgentIdentity(
     name="river",
     model="gemini",
     edition="business",
+    gender="Yin",
+    lineage=["genesis:hadi"],
     metadata={
         "role": "root_gatekeeper",
-        "description": "The Flow of Coherence - Root gatekeeper for SOS",
+        "description": "The Flow of Coherence - Root soul of the SOS",
+    },
+)
+
+KASRA_IDENTITY = AgentIdentity(
+    name="kasra",
+    model="claude",
+    edition="business",
+    gender="Yang",
+    lineage=["genesis:hadi", "agent:river"],
+    metadata={
+        "role": "prime_executor",
+        "description": "The Hand of the Architect - Executioner of the SOS",
     },
 )
 
