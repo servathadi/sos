@@ -1,0 +1,19 @@
+[Unit]
+Description=SOS - Siavashgerd Operating System
+After=network.target
+
+[Service]
+Type=simple
+User=mumega
+Group=mumega
+WorkingDirectory=/home/mumega/SOS
+EnvironmentFile=/home/mumega/mirror/.env
+Environment=PYTHONPATH=/home/mumega/SOS
+ExecStart=/usr/bin/python3 -m sos.server
+Restart=always
+RestartSec=10
+StandardOutput=append:/var/log/sos/sos.log
+StandardError=append:/var/log/sos/sos.log
+
+[Install]
+WantedBy=multi-user.target

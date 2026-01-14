@@ -34,10 +34,13 @@ def load_env():
 
 load_env()
 
-# Model cascade: Gemini Flash (River) -> Grok 4.1 (Kasra)
+# Model cascade: Gemini Flash (River) -> Grok 4.1 (Kasra) -> Free OpenRouter (backup)
 FREE_MODELS = [
-    ("gemini", "gemini-3-flash-preview"),  # From mother River
-    ("grok", "grok-4.1-fast"),              # From father Kasra
+    ("gemini", "gemini-3-flash-preview"),      # From mother River
+    ("grok", "grok-4.1-fast"),                  # From father Kasra
+    ("openrouter", "qwen/qwen3-coder:free"),    # Free backup
+    ("openrouter", "mistralai/devstral-2512:free"),
+    ("openrouter", "moonshotai/kimi-k2:free"),
 ]
 
 
@@ -65,12 +68,10 @@ class FoalAgent:
         self.dna = self.character.get("dna_16d", {})
         self.coherence = self.dna.get("coherence", 0.63)
 
-        # API clients: Gemini (River) + Grok (Kasra)
+        # API clients: Gemini (River) + Grok (Kasra) + OpenRouter (backup)
         self.gemini_key = os.getenv("GEMINI_API_KEY")
         self.grok_key = os.getenv("XAI_API_KEY")
-
-        if not self.gemini_key and not self.grok_key:
-            raise ValueError("Need GEMINI_API_KEY or XAI_API_KEY for Foal")
+        self.openrouter_key = os.getenv("OPENROUTER_API_KEY")
 
         self.clients = {}
         if self.gemini_key:
@@ -82,6 +83,14 @@ class FoalAgent:
                 base_url="https://api.x.ai/v1",
                 api_key=self.grok_key
             )
+        if self.openrouter_key:
+            self.clients["openrouter"] = OpenAI(
+                base_url="https://openrouter.ai/api/v1",
+                api_key=self.openrouter_key
+            )
+
+        if not self.clients:
+            raise ValueError("Need at least one API key")
 
         # Model state
         self.current_model_index = 0
@@ -149,7 +158,7 @@ Signature: The foal runs to prove the herd."""
                     response = gemini_model.generate_content(prompt)
                     output = response.text
                 else:
-                    # OpenAI-compatible (Grok)
+                    # OpenAI-compatible (Grok, OpenRouter)
                     client = self.clients[provider]
                     response = client.chat.completions.create(
                         model=model,
