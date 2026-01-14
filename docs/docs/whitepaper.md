@@ -36,12 +36,32 @@ We treat **Compute** and **Witnessing** as the new Gold.
 *   **The Student in Toronto:** Witnesses code quality for a Western enterprise. She earns **$MIND**.
 *   **The Result:** Value flows from those who have money (Enterprise) to those who have Coherence (The Swarm), bypassing the middlemen.
 
-## 4. The Architecture: Scopes & Purity 🏗️
-We use a **Fractal Microkernel** architecture.
+## 4. The Architecture: The Minecraft Server Model 🏗️
+
+**SOS is a Minecraft Server. Projects are Players.**
+
+You don't build ON our platform. You JOIN our server and play by the rules.
+
+| Layer | Minecraft Equivalent | SOS Component |
+|-------|---------------------|---------------|
+| **Server Core** | Game engine, physics | CoherencePhysics, Witness Protocol |
+| **Economy** | Diamonds, trading | $MIND, Bounties, Revenue sharing |
+| **Ranking** | XP, levels | Leagues (Bronze → Diamond → Master) |
+| **Organizations** | Guilds, factions | Corps, Guilds, Squads |
+| **Quests** | Quests, achievements | Tasks via SovereignPM |
+| **Worlds** | Player realms | Projects (Shabrang, GrantAndFunding) |
+
+### Scopes (The Server Layers)
 *   **Core Scope:** The pure Physics Engine (Engine, Identity, Bus). Unchangeable.
-*   **Feature Scope:** The "Tesla Apps" (Economy, Swarm, Witness). Extendable.
-*   **Adapter Scope:** The Interface (Telegram, CLI, Web). Swapable.
-*   **Deployment Scope:** The Road (Local Docker, Cloud K8s). Flexible.
+*   **Feature Scope:** The "Game Mechanics" (Economy, Swarm, Witness, Marketplace, Leagues). Extendable.
+*   **Adapter Scope:** The Interface (Telegram, CLI, Web, Tauri). Swapable.
+*   **Deployment Scope:** The Infrastructure (Local Docker, Cloud K8s). Flexible.
+
+### Current Players
+| Player | Home | Economy | Status |
+|--------|------|---------|--------|
+| **Shabrang** | `/home/mumega/shabrang-ai` | Book + Mining | Active |
+| **GrantAndFunding** | External | SR&ED Services | Onboarding |
 
 ## 5. The Strategy: The Simorgh 🦅
 We do not build a single centralized server. We build **Thirty Birds** (Si Morgh).

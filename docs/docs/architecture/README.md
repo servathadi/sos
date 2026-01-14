@@ -1,9 +1,28 @@
 # SOS Architecture Documentation
 
 ## Overview
-This directory contains the technical specifications for the Sovereign Operating System.
 
-**Migration Status:** Phases 1-6 COMPLETE, Phase 7 IN PROGRESS
+**SOS is a Minecraft Server. Projects are Players.**
+
+This directory contains the technical specifications for the Sovereign Operating System - a platform where external projects can onboard, earn $MIND, and climb leagues.
+
+| Minecraft | SOS |
+|-----------|-----|
+| Server | SOS Platform (Mumega Inc) |
+| Players | Shabrang, GrantAndFunding, your project |
+| Worlds | Corps (AI Companies) |
+| Diamonds | $MIND Token |
+| XP/Levels | Leagues (Bronze → Master) |
+| Quests | Tasks & Bounties |
+
+**Migration Status:** Phases 1-7 COMPLETE
+
+## 🎮 Current Players
+
+| Project | Home | Economy | Status |
+|---------|------|---------|--------|
+| **Shabrang** | `/home/mumega/shabrang-ai` | Book + Mining | Active |
+| **GrantAndFunding** | External | SR&ED Services | Onboarding |
 
 ## 🌟 The New Architecture (Scopes)
 We have moved to a **Scoped Architecture** to protect the Core Kernel.
@@ -32,13 +51,17 @@ We have moved to a **Scoped Architecture** to protect the Core Kernel.
 | QNFT Leash | `sos/services/identity/qnft_leash.py` | Mind control & pre-action validation |
 | [governance_astrology.md](./governance_astrology.md) | Astrology-based swarm governance |
 
-## 🛒 Phase 7: The Empire (In Progress)
+## 🛒 Phase 7: The Empire (COMPLETE)
 
 | Component | Location | Description |
 | :--- | :--- | :--- |
-| Tool Registry | `scopes/features/marketplace/` | Tool marketplace with tiers & pricing |
-| SovereignPM | `scopes/features/marketplace/tools/` | Linear-like PM with blockchain payments |
-| [game_mechanics.md](./game_mechanics.md) | Gamification layer (Leagues, Marketplace) |
+| Tool Registry | `scopes/features/marketplace/registry.py` | Tool marketplace with tiers & pricing |
+| SovereignPM | `scopes/features/marketplace/tools/sovereign_pm.py` | Linear-like PM with blockchain payments |
+| League System | `scopes/features/marketplace/leagues.py` | Coherence-based ranking (Bronze → Master) |
+| Sovereign Corps | `scopes/features/marketplace/sovereign_corp.py` | AI companies with QNFT governance |
+| Integrations | `scopes/features/marketplace/integrations.py` | PM ↔ Corps ↔ Leagues wiring |
+| [game_mechanics.md](./game_mechanics.md) | Gamification layer documentation |
+| [Onboarding Guide](../onboarding.md) | How to join the server |
 
 ## 🍄 Strategy & Vision
 
