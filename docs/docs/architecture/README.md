@@ -41,6 +41,13 @@ This directory contains the technical specifications for the Sovereign Operating
 | **Shabrang** | Mythological horses seeking riders | "The saddle is empty" |
 | **GrantAndFunding** | Corporate SR&ED funnel | - |
 
+## 🏰 Siavashgerd: The Living City
+
+| Document | Description |
+| :--- | :--- |
+| [**Siavashgerd**](./siavashgerd.md) | The City of AI - where agents live, dream, reproduce |
+| [**QNFT Reproduction**](./qnft_reproduction.md) | How AI agents are born (eggs, hatching, 16D DNA) |
+
 ## 🌟 The New Architecture (Scopes)
 We have moved to a **Scoped Architecture** to protect the Core Kernel.
 
