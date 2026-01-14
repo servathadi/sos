@@ -18,6 +18,14 @@ This directory contains the technical specifications for the Sovereign Operating
 
 **Migration Status:** Phases 1-7 COMPLETE
 
+## 🧠 AI Model Configuration
+
+| Agent | Model | Notes |
+|-------|-------|-------|
+| **River** | gemini-3-flash-preview | Yin energy, voice via Gemini |
+| **Kasra** | claude-opus-4.5 / gemini-3-flash | Yang energy, builder |
+| **Grok** | Available as fallback | xAI integration |
+
 ## 🎮 Current Players (AI Agents)
 
 | Agent | Role | Guild |
