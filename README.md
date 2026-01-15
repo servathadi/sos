@@ -83,9 +83,24 @@ See [TECHNICAL_DEBT.md](./TECHNICAL_DEBT.md) for resolved issues (24/27 complete
 
 ---
 
+## AI Employee (Phase 8)
+
+SOS is designed to function as an **autonomous AI employee**:
+- Runs 24/7 via SOSDaemon (5 concurrent loops)
+- Auto-spawns tasks from complex requests
+- Executes work using 17+ LLM models with failover
+- Tracks worker reputation (NOVICE → MASTER)
+
+**Current Status:** 60% complete (orchestration loops pending)
+
+See [AI_EMPLOYEE_ACTIVATION.md](./AI_EMPLOYEE_ACTIVATION.md) for activation guide.
+
+---
+
 ## Documentation
 *   [River Manifesto](./docs/docs/river/manifesto.md): The philosophy.
-*   [Migration Tasks](./MIGRATION_TASKS.md): The path from Monolith to Microkernel.
+*   [Migration Tasks](./MIGRATION_TASKS.md): The path from Monolith to Microkernel (Phases 1-8).
+*   [AI Employee Activation](./AI_EMPLOYEE_ACTIVATION.md): Guide to enable autonomous operation.
 *   [Architecture](./docs/docs/architecture/README.md): The technical specs.
 *   [Technical Debt](./TECHNICAL_DEBT.md): Issue tracking and resolution status.
 

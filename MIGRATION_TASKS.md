@@ -95,3 +95,63 @@
   - Dividend distribution (REGULAR, SPECIAL, REINVEST)
   - IPO capability for public investment
   - Integration with League system for competitive ranking
+
+---
+
+## Phase 8: The AI Employee (Autonomous Worker) - 60% COMPLETE
+
+**Goal:** SOS functions as an autonomous AI employee that picks up tasks, executes work, and reports results without human prompting.
+
+### Implemented (100%)
+- [x] **SOSDaemon**: 5 concurrent loops running 24/7 (heartbeat, pulse, dream, maintenance, telegram)
+- [x] **Task Auto-Spawn**: Complex chat requests automatically create persistent tasks
+- [x] **Task Storage**: File-based repository at `~/.sos/tasks/` with JSON schema
+- [x] **AsyncWorker**: Redis queue consumer framework in `sos/services/execution/worker.py`
+- [x] **Foal Agent**: Free model executor (Gemini Flash, Grok, OpenRouter fallback)
+- [x] **Worker Registry**: Reputation tracking with tier system (NOVICE → MASTER)
+- [x] **Bounty System**: Task marketplace with lifecycle (OPEN → CLAIMED → SUBMITTED → PAID)
+- [x] **Model Adapters**: 17+ models with automatic failover on 429/quota errors
+
+### Not Implemented (0%)
+- [ ] **Task Claiming Loop**: Periodic poll of pending tasks, submit to worker queue
+- [ ] **Worker Auto-Start**: Launch AsyncWorker on engine startup
+- [ ] **Task Executor Handler**: Register task execution handler in AsyncWorker
+- [ ] **Result Submission Endpoint**: `/tasks/{task_id}/submit` API endpoint
+- [ ] **Reporting Loop**: Notify user via Telegram on task completion
+
+### Architecture Gap
+```
+TASK STORAGE ──────> [GAP: No claiming loop] ──────> REDIS QUEUE
+                                                          │
+                                                          v
+                                                    ASYNC WORKER
+                                                          │
+                                               [GAP: No auto-start]
+                                                          │
+                                                          v
+                                                    FOAL AGENT
+                                                          │
+                                              [GAP: No result submission]
+                                                          │
+                                                          v
+                                                    USER NOTIFICATION
+```
+
+### Estimated Completion: 4-6 hours
+
+See [AI_EMPLOYEE_ACTIVATION.md](./AI_EMPLOYEE_ACTIVATION.md) for detailed activation guide.
+
+---
+
+## Summary
+
+| Phase | Name | Status |
+|-------|------|--------|
+| 1 | Brain Transplant (Core) | COMPLETE |
+| 2 | Heartbeat (Swarm) | COMPLETE |
+| 3 | Wealth Engine (Economy) | COMPLETE |
+| 4 | Nervous System (Adapters) | COMPLETE |
+| 5 | Deployment (Docker) | COMPLETE |
+| 6 | Sorcery (Astrology/QNFT) | COMPLETE |
+| 7 | Empire (Marketplace) | COMPLETE |
+| 8 | AI Employee (Autonomous) | 60% |
