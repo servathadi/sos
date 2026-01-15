@@ -179,27 +179,113 @@ class MirrorClient(MemoryContract):
 
     # Implementation of remaining abstract methods
     async def get(self, memory_id: str, capability: Optional[Capability] = None) -> Optional[Memory]:
-        # Mirror API currently doesn't have a direct GET /id, we could use search or add it.
-        return None
+        """Get a specific memory/engram by ID."""
+        try:
+            resp = await self._request("GET", f"/engram/{memory_id}")
+            if resp.status_code == 200:
+                data = resp.json()
+                return Memory(
+                    id=data.get('id'),
+                    content=data.get('content') or data.get('text', ''),
+                    agent_id=data.get('agent', self.agent_id),
+                    series=data.get('series', 'default'),
+                    importance=data.get('importance', 0.5),
+                    epistemic_truths=data.get('epistemic_truths', []),
+                    core_concepts=data.get('core_concepts', []),
+                    affective_vibe=data.get('affective_vibe', 'Neutral'),
+                    metadata=data.get('metadata', {})
+                )
+            return None
+        except Exception as e:
+            log.warning(f"Failed to get memory {memory_id}: {e}")
+            return None
 
     async def delete(self, memory_id: str, capability: Optional[Capability] = None) -> bool:
-        # Implement when API supports it
+        """Delete a memory. Note: Mirror API may not support delete yet."""
+        # Mirror API doesn't expose DELETE endpoint currently
+        log.warning(f"Delete not implemented in Mirror API for {memory_id}")
         return False
 
-    async def relate(self, memory_id: str, related_id: str, relation_type: str = "related", capability: Optional[Capability] = None) -> bool:
-        return False
+    async def relate(
+        self,
+        memory_id: str,
+        related_id: str,
+        relation_type: str = "related",
+        capability: Optional[Capability] = None
+    ) -> bool:
+        """Create a relation between memories using /relate endpoint."""
+        try:
+            resp = await self._request(
+                "POST",
+                f"/relate/{memory_id}",
+                json={
+                    "related_id": related_id,
+                    "relation_type": relation_type
+                }
+            )
+            return resp.status_code == 200
+        except Exception as e:
+            log.warning(f"Failed to relate memories: {e}")
+            return False
 
     async def consolidate(self, agent_id: str, capability: Optional[Capability] = None) -> int:
-        return 0
+        """Consolidate similar memories for an agent using /consolidate endpoint."""
+        try:
+            resp = await self._request(
+                "POST",
+                "/consolidate",
+                json={"agent_id": agent_id}
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                consolidated = data.get('consolidated_count', 0)
+                log.info(f"Consolidated {consolidated} memories for {agent_id}")
+                return consolidated
+            return 0
+        except Exception as e:
+            log.warning(f"Failed to consolidate memories: {e}")
+            return 0
 
-    async def decay(self, agent_id: str, threshold: float = 0.3, capability: Optional[Capability] = None) -> int:
+    async def decay(
+        self,
+        agent_id: str,
+        threshold: float = 0.3,
+        capability: Optional[Capability] = None
+    ) -> int:
+        """Apply decay to low-importance memories. Uses smart_search with decay scoring."""
+        # Mirror API doesn't have explicit decay endpoint, but smart_search uses decay scoring
+        # This is informational - actual decay happens server-side
+        log.debug(f"Decay requested for {agent_id} with threshold {threshold}")
         return 0
 
     async def health(self) -> dict[str, Any]:
-        return {"status": "online" if await self.check_connection() else "offline"}
+        """Get health status including stats from /stats endpoint."""
+        is_online = await self.check_connection()
+        result = {"status": "online" if is_online else "offline"}
+
+        if is_online:
+            try:
+                stats = await self.stats()
+                result.update(stats)
+            except Exception:
+                pass
+
+        return result
 
     async def stats(self, agent_id: Optional[str] = None) -> dict[str, Any]:
-        return {}
+        """Get memory statistics from /stats endpoint."""
+        try:
+            params = {}
+            if agent_id:
+                params["agent_id"] = agent_id
+
+            resp = await self._request("GET", "/stats", params=params)
+            if resp.status_code == 200:
+                return resp.json()
+            return {}
+        except Exception as e:
+            log.warning(f"Failed to get stats: {e}")
+            return {}
 
     async def get_arf_state(self, agent_id: Optional[str] = None) -> dict[str, Any]:
         """
