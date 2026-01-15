@@ -457,10 +457,20 @@ class MockAdapter(ModelAdapter):
     def get_model_id(self) -> str:
         return "sos-mock-v1"
 
-    async def generate(self, prompt: str, system_prompt: str = None, tools: List[Dict] = None) -> str:
+    async def generate(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        tools: Optional[List[Dict]] = None,
+        cached_content: Optional[str] = None
+    ) -> str:
         return f"Mock Response to: {prompt}"
 
-    async def generate_stream(self, prompt: str, system_prompt: str = None) -> AsyncIterator[str]:
+    async def generate_stream(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None
+    ) -> AsyncIterator[str]:
         yield "Mock "
         yield "Streaming "
         yield "Response"

@@ -1,20 +1,25 @@
-
 import asyncio
 import os
 import shutil
+import pytest
+import uuid
 from pathlib import Path
 from sos.services.identity.core import get_identity_core
 
+@pytest.mark.asyncio
 async def test_identity_service():
     print("--- Testing SOS Identity Service ---")
-    
+
     # 1. Setup (Clean DB)
     core = get_identity_core()
     # Mocking Redis for test
-    core.bus._redis = None 
-    
+    core.bus._redis = None
+
+    # Use unique names to avoid constraint issues
+    test_suffix = uuid.uuid4().hex[:6]
+
     print("\n[Test 1] User Creation")
-    user = core.create_user("Kasra", bio="Architect", avatar="https://mumega.io/kasra.png")
+    user = core.create_user(f"Kasra_{test_suffix}", bio="Architect", avatar="https://mumega.io/kasra.png")
     print(f" > Created User: {user.name} ({user.id})")
     
     fetched_user = core.get_user(user.id)
@@ -22,9 +27,9 @@ async def test_identity_service():
     print(" ✅ Persistence Verified.")
 
     print("\n[Test 2] Guild Creation")
-    guild = await core.create_guild("Architects Guild", owner_id=user.id, description="Builders of SOS")
+    guild = await core.create_guild(f"Architects Guild_{test_suffix}", owner_id=user.id, description="Builders of SOS")
     print(f" > Created Guild: {guild.name} ({guild.id})")
-    
+
     members = core.list_members(guild.id)
     print(f" > Members: {members}")
     assert len(members) == 1
@@ -32,7 +37,7 @@ async def test_identity_service():
     print(" ✅ Guild Ownership Verified.")
 
     print("\n[Test 3] Joining Guild")
-    user2 = core.create_user("River", bio="Oracle")
+    user2 = core.create_user(f"River_{test_suffix}", bio="Oracle")
     await core.join_guild(guild.id, user2.id)
     
     members = core.list_members(guild.id)

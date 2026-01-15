@@ -1,7 +1,8 @@
-
 import asyncio
+import pytest
 from sos.services.engine.swarm import SwarmDispatcher
 
+@pytest.mark.asyncio
 async def test_swarm():
     print("--- Testing Swarm Dispatcher ---")
     

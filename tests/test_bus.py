@@ -1,8 +1,9 @@
-
 import asyncio
+import pytest
 from sos.services.bus.core import MessageBus
 from sos.kernel import Message, MessageType
 
+@pytest.mark.asyncio
 async def test_nervous_system():
     print("--- Testing SOS Nervous System (Redis) ---")
     

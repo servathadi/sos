@@ -1,6 +1,7 @@
 import asyncio
 import os
 import sys
+import pytest
 
 # Setup Path
 sys.path.append(os.getcwd())
@@ -8,6 +9,7 @@ sys.path.append(os.getcwd())
 from sos.services.engine.core import SOSEngine
 from sos.services.memory.core import MemoryCore
 
+@pytest.mark.asyncio
 async def test_boot():
     print(">>> Booting Memory Core...")
     mem = MemoryCore()

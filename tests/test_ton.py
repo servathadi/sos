@@ -1,7 +1,8 @@
-
 import asyncio
+import pytest
 from sos.plugins.economy.ton import TonWallet
 
+@pytest.mark.asyncio
 async def test_ton_plugin():
     print("--- Testing TON Wallet Plugin ---")
     

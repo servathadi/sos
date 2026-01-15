@@ -1,8 +1,9 @@
-
 import asyncio
+import pytest
 from sos.services.engine.core import SOSEngine
 from sos.contracts.engine import ChatRequest
 
+@pytest.mark.asyncio
 async def test_sovergent_tasks():
     print("--- Testing Sovergent Task Management ---")
     engine = SOSEngine()

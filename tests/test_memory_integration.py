@@ -1,6 +1,7 @@
 import asyncio
 import os
 import sys
+import pytest
 
 # Add project root to path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -9,6 +10,7 @@ from sos.services.engine.core import SOSEngine
 from sos.kernel import Config
 from sos.contracts.engine import ChatRequest
 
+@pytest.mark.asyncio
 async def test_memory_loop():
     print("🧠 Testing Context-Aware Memory Integration...")
     
@@ -28,7 +30,11 @@ async def test_memory_loop():
     # 2. Plant a Memory directly
     secret = " The passcode is 'BlueGiraffe'."
     print(f"📝 Planting Secret Memory: '{secret}'")
-    await engine.memory.add(content=f"Important Information: {secret}", metadata={"type": "fact"})
+    await engine.memory.store(
+        content=f"Important Information: {secret}",
+        agent_id="tester",
+        metadata={"type": "fact"}
+    )
     
     # 3. Ask Engine about it
     print("❓ Asking Engine via Chat...")
