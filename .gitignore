@@ -25,4 +25,4 @@ logs/
 
 # System
 .sos/
-data/*.db
+data/*.dbartifacts/spores/
