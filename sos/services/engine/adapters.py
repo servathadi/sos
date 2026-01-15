@@ -350,7 +350,7 @@ class GeminiAdapter(ModelAdapter):
             except Exception as e:
                 error_str = str(e)
                 if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
-                    log.warn(f"Rate limit hit on {self._current_key_obj.provider}. Rotating layers...")
+                    log.warning(f"Rate limit hit on {self._current_key_obj.provider}. Rotating layers...")
                     self.rotator.mark_fail(self._current_key_obj.value)
                     self._init_client()
                     attempts += 1

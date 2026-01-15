@@ -67,7 +67,7 @@ async def run_native_tool(script: str, args: List[str], env: Dict[str, str]) -> 
         stderr_str = stderr.decode()
         
         if stderr_str:
-            log.warn(f"Tool {script} stderr: {stderr_str}")
+            log.warning(f"Tool {script} stderr: {stderr_str}")
             
         if proc.returncode != 0:
             log.error(f"Tool {script} failed with code {proc.returncode}")

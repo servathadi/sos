@@ -72,7 +72,7 @@ class MemoryCore:
                 log.info(f"🧠 ARF State Update | Score: {best_score:.4f} | Alpha: {state.alpha_norm:.4f} | Regime: {state.regime}")
                 
             except Exception as e:
-                log.warn(f"Coherence check failed: {e}")
+                log.warning(f"Coherence check failed: {e}")
 
         # 1. Store Metadata (Persistent)
         if self.metadata_store:

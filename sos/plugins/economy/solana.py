@@ -40,7 +40,7 @@ class SolanaWallet:
         if not self.keypair:
             # Generate a temporary ephemeral key for testing/dev
             self.keypair = Keypair()
-            log.warn("Using ephemeral Solana keypair (NOT PERSISTENT)")
+            log.warning("Using ephemeral Solana keypair (NOT PERSISTENT)")
             
         log.info(f"Solana Wallet Initialized: {self.keypair.pubkey()}")
 

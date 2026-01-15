@@ -43,7 +43,7 @@ class MCPBridge:
                     self.servers[server.get_server_name()] = server
                     log.info(f"Loaded MCP Server: {server.get_server_name()}")
                 except ImportError as e:
-                    log.warn(f"Could not load {module_path}: {e}")
+                    log.warning(f"Could not load {module_path}: {e}")
                 except Exception as e:
                     log.error(f"Failed to init {class_name}: {e}")
 

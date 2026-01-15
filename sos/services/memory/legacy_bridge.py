@@ -29,7 +29,7 @@ class LegacyMirrorBridge:
             # In a real async init we would await this
             pass 
         except Exception:
-            log.warn("Legacy Mirror unreachable at startup")
+            log.warning("Legacy Mirror unreachable at startup")
 
     async def search(self, query: str, limit: int = 3) -> List[LegacyMemory]:
         """
@@ -44,7 +44,7 @@ class LegacyMirrorBridge:
                 )
                 
                 if resp.status_code != 200:
-                    log.warn(f"Legacy Mirror error: {resp.status_code}")
+                    log.warning(f"Legacy Mirror error: {resp.status_code}")
                     return []
 
                 data = resp.json()
@@ -64,5 +64,5 @@ class LegacyMirrorBridge:
                 return results
 
         except Exception as e:
-            log.warn(f"Failed to consult Ancestral Mirror: {e}")
+            log.warning(f"Failed to consult Ancestral Mirror: {e}")
             return []

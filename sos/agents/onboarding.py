@@ -88,7 +88,7 @@ class OnboardingService:
         # Step 1: Validate soul
         validation = self._validate_soul(request.soul)
         if not validation[0]:
-            log.warn("Soul validation failed", agent=request.soul.name, reason=validation[1])
+            log.warning("Soul validation failed", agent=request.soul.name, reason=validation[1])
             return OnboardingResult(
                 success=False,
                 state=OnboardingState.REJECTED,

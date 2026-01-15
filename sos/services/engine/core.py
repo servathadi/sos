@@ -12,7 +12,8 @@ from sos.contracts.engine import (
     ToolCallResult,
 )
 from sos.contracts.memory import MemoryQuery
-from sos.kernel import Config, Message, Response
+from sos.kernel import Config
+from sos.kernel.schema import Message, MessageType, Response, ResponseStatus
 from sos.clients.mirror import MirrorClient
 from sos.clients.tools import ToolsClient
 from sos.clients.economy import EconomyClient
@@ -24,7 +25,6 @@ log = get_logger("engine_core")
 from sos.services.engine.adapters import MockAdapter, GeminiAdapter, VertexAdapter, GrokAdapter
 
 from sos.services.bus.core import get_bus
-from sos.kernel.schema import Message, MessageType
 
 class SOSEngine(EngineContract):
     """
@@ -635,5 +635,238 @@ Provide:
         }
 
     async def handle_message(self, message: Message) -> Response:
-        # TODO: Implement generic message handling
-        return Response(content="Not implemented")
+        """
+        Generic message handler for all SOS message types.
+
+        Routes messages based on MessageType and returns appropriate Response.
+        """
+        log.debug(f"Handling message: {message.type.value} from {message.source}")
+
+        try:
+            # Route based on message type
+            handler = self._get_message_handler(message.type)
+            if handler:
+                return await handler(message)
+            else:
+                return Response.error(
+                    message_id=message.id,
+                    code="UNKNOWN_MESSAGE_TYPE",
+                    message=f"No handler for message type: {message.type.value}"
+                )
+
+        except Exception as e:
+            log.error(f"Message handling error: {e}")
+            return Response.error(
+                message_id=message.id,
+                code="HANDLER_ERROR",
+                message=str(e)
+            )
+
+    def _get_message_handler(self, msg_type: MessageType):
+        """Get handler function for message type."""
+        handlers = {
+            MessageType.CHAT: self._handle_chat,
+            MessageType.TOOL_CALL: self._handle_tool_call,
+            MessageType.MEMORY_STORE: self._handle_memory_store,
+            MessageType.MEMORY_QUERY: self._handle_memory_query,
+            MessageType.TASK_CREATE: self._handle_task_create,
+            MessageType.TASK_UPDATE: self._handle_task_update,
+            MessageType.CAPABILITY_REQUEST: self._handle_capability_request,
+            MessageType.HEALTH_CHECK: self._handle_health_check,
+            MessageType.WITNESS_REQUEST: self._handle_witness_request,
+        }
+        return handlers.get(msg_type)
+
+    async def _handle_chat(self, message: Message) -> Response:
+        """Handle CHAT message - generate response."""
+        text = message.payload.get("text", "")
+        model = message.payload.get("model", self.default_model)
+        system_prompt = message.payload.get("system_prompt")
+
+        adapter = self.models.get(model)
+        if not adapter:
+            return Response.error(
+                message_id=message.id,
+                code="MODEL_NOT_FOUND",
+                message=f"Model not available: {model}"
+            )
+
+        response_text = await adapter.generate(text, system_prompt=system_prompt)
+
+        return Response.success(
+            message_id=message.id,
+            data={"response": response_text, "model": model}
+        )
+
+    async def _handle_tool_call(self, message: Message) -> Response:
+        """Handle TOOL_CALL message - execute tool."""
+        tool_name = message.payload.get("tool_name")
+        arguments = message.payload.get("arguments", {})
+
+        if not tool_name:
+            return Response.error(
+                message_id=message.id,
+                code="MISSING_TOOL_NAME",
+                message="tool_name is required"
+            )
+
+        try:
+            result = await self.tools.execute({
+                "tool_name": tool_name,
+                "arguments": arguments
+            })
+            return Response.success(
+                message_id=message.id,
+                data={"result": result}
+            )
+        except Exception as e:
+            return Response.error(
+                message_id=message.id,
+                code="TOOL_EXECUTION_FAILED",
+                message=str(e)
+            )
+
+    async def _handle_memory_store(self, message: Message) -> Response:
+        """Handle MEMORY_STORE message."""
+        content = message.payload.get("content", "")
+        agent_id = message.payload.get("agent_id", message.source)
+        series = message.payload.get("series", "default")
+        metadata = message.payload.get("metadata", {})
+
+        result = await self.memory.store(
+            content=content,
+            agent_id=agent_id,
+            series=series,
+            metadata=metadata
+        )
+
+        if result.success:
+            return Response.success(
+                message_id=message.id,
+                data={"memory_id": result.memory_id}
+            )
+        else:
+            return Response.error(
+                message_id=message.id,
+                code="MEMORY_STORE_FAILED",
+                message="Failed to store memory"
+            )
+
+    async def _handle_memory_query(self, message: Message) -> Response:
+        """Handle MEMORY_QUERY message."""
+        query = message.payload.get("query", "")
+        agent_id = message.payload.get("agent_id")
+        limit = message.payload.get("limit", 5)
+
+        results = await self.memory.search(
+            MemoryQuery(query=query, agent_id=agent_id, limit=limit)
+        )
+
+        return Response.success(
+            message_id=message.id,
+            data={
+                "results": [
+                    {"content": r.memory.content, "similarity": r.similarity}
+                    for r in results
+                ]
+            }
+        )
+
+    async def _handle_task_create(self, message: Message) -> Response:
+        """Handle TASK_CREATE message."""
+        title = message.payload.get("title", "")
+        description = message.payload.get("description", "")
+        priority = message.payload.get("priority", "medium")
+        assignee = message.payload.get("assignee")
+
+        try:
+            task_id = await self.task_manager.create_task(
+                title=title,
+                description=description,
+                priority=priority,
+                assignee=assignee
+            )
+            return Response.success(
+                message_id=message.id,
+                data={"task_id": task_id}
+            )
+        except Exception as e:
+            return Response.error(
+                message_id=message.id,
+                code="TASK_CREATE_FAILED",
+                message=str(e)
+            )
+
+    async def _handle_task_update(self, message: Message) -> Response:
+        """Handle TASK_UPDATE message."""
+        task_id = message.payload.get("task_id")
+        updates = message.payload.get("updates", {})
+
+        if not task_id:
+            return Response.error(
+                message_id=message.id,
+                code="MISSING_TASK_ID",
+                message="task_id is required"
+            )
+
+        try:
+            await self.task_manager.update_task(task_id, **updates)
+            return Response.success(
+                message_id=message.id,
+                data={"task_id": task_id, "updated": True}
+            )
+        except Exception as e:
+            return Response.error(
+                message_id=message.id,
+                code="TASK_UPDATE_FAILED",
+                message=str(e)
+            )
+
+    async def _handle_capability_request(self, message: Message) -> Response:
+        """Handle CAPABILITY_REQUEST message."""
+        # Capability requests need approval workflow
+        action = message.payload.get("action")
+        resource = message.payload.get("resource")
+        requester = message.source
+
+        log.info(f"Capability request from {requester}: {action} on {resource}")
+
+        # For now, return pending - requires witness approval
+        return Response(
+            message_id=message.id,
+            status=ResponseStatus.PENDING,
+            data={
+                "action": action,
+                "resource": resource,
+                "requester": requester,
+                "message": "Capability request pending approval"
+            }
+        )
+
+    async def _handle_health_check(self, message: Message) -> Response:
+        """Handle HEALTH_CHECK message."""
+        health_data = await self.health()
+        return Response.success(
+            message_id=message.id,
+            data=health_data
+        )
+
+    async def _handle_witness_request(self, message: Message) -> Response:
+        """Handle WITNESS_REQUEST message."""
+        content = message.payload.get("content")
+        truth_claim = message.payload.get("truth_claim")
+        requester = message.source
+
+        # Witness requests need human-in-the-loop
+        log.info(f"Witness request from {requester}: {truth_claim}")
+
+        return Response(
+            message_id=message.id,
+            status=ResponseStatus.PENDING,
+            data={
+                "content": content,
+                "truth_claim": truth_claim,
+                "requester": requester,
+                "message": "Witness request submitted for human review"
+            }
+        )
