@@ -97,13 +97,6 @@ class SOSEngine(EngineContract):
                         await self.publish_thought("agent:river", "Self-test received. Coherence verified at 0.98. The flow is steady.")
             except Exception as e:
                 log.error(f"Error handling bus message: {e}")
-        
-        self.running = True
-        self.is_dreaming = False
-        
-        # Initialize Sovereign Task Manager (Auto-spawn capability)
-        from sos.services.engine.task_manager import SovereignTaskManager
-        self.task_manager = SovereignTaskManager(config=self.config)
 
     async def dream_cycle(self):
         """
@@ -442,14 +435,71 @@ class SOSEngine(EngineContract):
         ]
 
     async def health(self) -> Dict[str, Any]:
-        return {
-            "status": "ok",
-            "version": "0.1.0",
-            "services": {
-                "memory": "connected", # TODO: Real check
-                "tools": "connected",
-                "economy": "connected"
+        """
+        Return real health status by checking each service.
+        """
+        services = {}
+        all_healthy = True
+
+        # Check Memory (Mirror) - async
+        try:
+            memory_health = await self.memory.health()
+            memory_status = memory_health.get("status", "unknown")
+            services["memory"] = {
+                "status": memory_status,
+                "healthy": memory_status in ("online", "ok", "healthy"),
             }
+        except Exception as e:
+            services["memory"] = {"status": "error", "healthy": False, "error": str(e)}
+            all_healthy = False
+
+        # Check Tools - sync, wrap in thread
+        try:
+            tools_health = await asyncio.to_thread(self.tools.health)
+            tools_status = tools_health.get("status", "unknown")
+            services["tools"] = {
+                "status": tools_status,
+                "healthy": tools_status in ("online", "ok", "healthy"),
+            }
+        except Exception as e:
+            services["tools"] = {"status": "error", "healthy": False, "error": str(e)}
+            all_healthy = False
+
+        # Check Economy - sync, wrap in thread
+        try:
+            economy_health = await asyncio.to_thread(self.economy.health)
+            economy_status = economy_health.get("status", "unknown")
+            services["economy"] = {
+                "status": economy_status,
+                "healthy": economy_status in ("online", "ok", "healthy"),
+            }
+        except Exception as e:
+            services["economy"] = {"status": "error", "healthy": False, "error": str(e)}
+            all_healthy = False
+
+        # Check Redis Bus
+        try:
+            if self.bus._redis:
+                await self.bus._redis.ping()
+                services["bus"] = {"status": "connected", "healthy": True}
+            else:
+                services["bus"] = {"status": "not_initialized", "healthy": False}
+                all_healthy = False
+        except Exception as e:
+            services["bus"] = {"status": "error", "healthy": False, "error": str(e)}
+            all_healthy = False
+
+        # Update all_healthy based on service statuses
+        for svc in services.values():
+            if not svc.get("healthy", False):
+                all_healthy = False
+
+        return {
+            "status": "healthy" if all_healthy else "degraded",
+            "version": "0.1.0",
+            "services": services,
+            "models_available": list(self.models.keys()),
+            "dreaming": self.is_dreaming,
         }
 
     async def handle_message(self, message: Message) -> Response:

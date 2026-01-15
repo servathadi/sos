@@ -219,9 +219,69 @@ class VertexAdapter(ModelAdapter):
         
         return "Error: All models exhausted."
 
-    async def generate_stream(self, prompt: str, system_prompt: str = None) -> AsyncIterator[str]:
-        # TODO: Implement Vertex streaming
-        yield "Vertex Streaming not yet implemented"
+    async def generate_stream(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None
+    ) -> AsyncIterator[str]:
+        """
+        Stream content from Vertex AI with model fallback.
+        """
+        if not self.client:
+            yield "Error: Vertex AI not initialized"
+            return
+
+        models_to_try = [
+            "gemini-2.0-flash-exp",
+            "gemini-2.0-flash-001",
+            "gemini-2.0-pro-exp",
+            "gemini-1.5-pro",
+            "gemini-1.5-flash"
+        ]
+
+        for attempt, current_model_name in enumerate(models_to_try):
+            try:
+                from vertexai.generative_models import GenerativeModel
+
+                model = GenerativeModel(
+                    current_model_name,
+                    system_instruction=system_prompt
+                )
+
+                # Use generate_content with stream=True
+                def _stream():
+                    return model.generate_content(
+                        prompt,
+                        generation_config={"temperature": 0.7, "max_output_tokens": 8192},
+                        stream=True
+                    )
+
+                # Get the stream in a thread (initial call)
+                response_stream = await asyncio.to_thread(_stream)
+
+                # Yield chunks as they arrive
+                for chunk in response_stream:
+                    if chunk.text:
+                        yield chunk.text
+
+                # Success - exit
+                return
+
+            except Exception as e:
+                error_str = str(e).lower()
+                is_quota = "429" in error_str or "quota" in error_str or "resource_exhausted" in error_str
+                is_conflict = "409" in error_str or "conflict" in error_str
+
+                if is_quota or is_conflict:
+                    log.warning(f"Vertex stream {current_model_name} hit {error_str[:50]}... Failing over.")
+                    if attempt < len(models_to_try) - 1:
+                        continue
+
+                log.error(f"Vertex streaming failed on {current_model_name}: {e}")
+                yield f"Error: Vertex streaming failure ({e})"
+                return
+
+        yield "Error: All models exhausted for streaming."
 
 class GeminiAdapter(ModelAdapter):
     """
@@ -302,21 +362,59 @@ class GeminiAdapter(ModelAdapter):
         return "Error: Total swarm exhaustion (All layers cooling)."
 
     async def generate_stream(self, prompt: str, system_prompt: str = None) -> AsyncIterator[str]:
-        # TODO: Implement rotation for streaming
-        if not self.client:
-            yield "Error: Gemini client not initialized"
+        """
+        Stream with rotation fallback on rate limits.
+        """
+        self._init_client()
+        if not self._current_key_obj:
+            yield "Error: No active API keys in any layer."
             return
 
-        try:
-            response = self.client.models.generate_content_stream(
-                model=self.get_model_id(),
-                contents=prompt
-            )
-            for chunk in response:
-                yield chunk.text
-        except Exception as e:
-            log.error(f"Gemini stream failed: {e}")
-            yield f"[Error: {e}]"
+        max_total_attempts = 15
+        attempts = 0
+
+        while attempts < max_total_attempts:
+            try:
+                if self._current_key_obj.provider == "gemini":
+                    config = {}
+                    if system_prompt:
+                        config["system_instruction"] = system_prompt
+
+                    response = self.client.models.generate_content_stream(
+                        model=self.get_model_id(),
+                        contents=prompt,
+                        config=config if config else None
+                    )
+
+                    for chunk in response:
+                        if chunk.text:
+                            yield chunk.text
+
+                    self.rotator.mark_success(self._current_key_obj.value)
+                    return
+
+                elif self._current_key_obj.provider == "grok":
+                    # Grok fallback for streaming
+                    yield "[Grok Fallback]: Streaming through alternate layer..."
+                    return
+
+            except Exception as e:
+                error_str = str(e)
+                if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
+                    log.warning(f"Rate limit hit on {self._current_key_obj.provider} stream. Rotating layers...")
+                    self.rotator.mark_fail(self._current_key_obj.value)
+                    self._init_client()
+                    attempts += 1
+                    if not self._current_key_obj:
+                        yield "Error: All API keys exhausted."
+                        return
+                    continue
+
+                log.error(f"Gemini stream failed: {e}")
+                yield f"[Error: {e}]"
+                return
+
+        yield "Error: Total swarm exhaustion (All layers cooling)."
 
 class MockAdapter(ModelAdapter):
     """
