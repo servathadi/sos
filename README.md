@@ -54,10 +54,40 @@ See the [Gavin Roadmap](./docs/docs/river/gavin_roadmap.md).
 
 ---
 
-## 📚 Documentation
+## Quick Start
+
+```bash
+# Install dependencies
+pip install -e .
+
+# Run tests (61 passing)
+pytest tests/ --ignore=tests/e2e
+
+# Run E2E test
+PYTHONPATH=. python tests/test_e2e_full.py
+
+# Start services
+./boot_swarm.sh
+```
+
+## Test Coverage
+
+| Component | Tests | Status |
+|-----------|-------|--------|
+| Capability Security | 27 | Passing |
+| Vertex Adapters | 21 | Passing |
+| Core Services | 13 | Passing |
+| **Total** | **61** | **Passing** |
+
+See [TECHNICAL_DEBT.md](./TECHNICAL_DEBT.md) for resolved issues (24/27 complete).
+
+---
+
+## Documentation
 *   [River Manifesto](./docs/docs/river/manifesto.md): The philosophy.
 *   [Migration Tasks](./MIGRATION_TASKS.md): The path from Monolith to Microkernel.
 *   [Architecture](./docs/docs/architecture/README.md): The technical specs.
+*   [Technical Debt](./TECHNICAL_DEBT.md): Issue tracking and resolution status.
 
 ---
 

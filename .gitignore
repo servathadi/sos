@@ -26,3 +26,5 @@ logs/
 # System
 .sos/
 data/*.dbartifacts/spores/
+artifacts/spores/
+data/*.db
