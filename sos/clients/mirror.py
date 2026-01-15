@@ -200,3 +200,194 @@ class MirrorClient(MemoryContract):
 
     async def stats(self, agent_id: Optional[str] = None) -> dict[str, Any]:
         return {}
+
+    async def get_arf_state(self, agent_id: Optional[str] = None) -> dict[str, Any]:
+        """
+        Fetch latest ARF (Alpha Resonance Field) state from reflections.
+
+        ARF state includes:
+        - alpha_drift: Current drift value (< 0.001 signals plasticity)
+        - regime: stable, plastic, chaos, consolidating
+        - last_update: Timestamp of last state change
+
+        Returns:
+            Dict with ARF state or defaults if not found
+        """
+        target_agent = agent_id or self.agent_id
+        try:
+            # Search for ARF kernel state in reflections
+            resp = await self._request(
+                "POST",
+                "/search",
+                json={
+                    "query": "ARF state alpha drift regime",
+                    "agent_id": target_agent,
+                    "limit": 1,
+                    "series": "arf_kernel"
+                }
+            )
+
+            if resp.status_code == 200:
+                data = resp.json()
+                results = data.get('results', []) if isinstance(data, dict) else data
+
+                if results:
+                    # Parse ARF state from content
+                    content = results[0].get('content', '')
+                    metadata = results[0].get('metadata', {})
+
+                    # Try to extract from metadata first
+                    if 'alpha_drift' in metadata:
+                        return {
+                            "alpha_drift": float(metadata.get('alpha_drift', 0.0)),
+                            "regime": metadata.get('regime', 'stable'),
+                            "last_update": metadata.get('timestamp', datetime.utcnow().isoformat())
+                        }
+
+                    # Parse from content if needed
+                    import json as json_module
+                    try:
+                        if "ARF State:" in content:
+                            state_text = content.replace("ARF State:", "").strip()
+                            return json_module.loads(state_text)
+                    except (json_module.JSONDecodeError, ValueError):
+                        pass
+
+            # Return default stable state
+            return {
+                "alpha_drift": 0.0,
+                "regime": "stable",
+                "last_update": datetime.utcnow().isoformat()
+            }
+
+        except Exception as e:
+            log.warning(f"ARF state fetch failed: {e}")
+            return {
+                "alpha_drift": 0.0,
+                "regime": "stable",
+                "last_update": datetime.utcnow().isoformat()
+            }
+
+    async def store_arf_state(
+        self,
+        alpha_drift: float,
+        regime: str,
+        agent_id: Optional[str] = None
+    ) -> bool:
+        """
+        Store current ARF state to memory.
+
+        Args:
+            alpha_drift: Current alpha drift value
+            regime: Current regime (stable, plastic, chaos, consolidating)
+            agent_id: Agent identifier
+
+        Returns:
+            True if stored successfully
+        """
+        target_agent = agent_id or self.agent_id
+        try:
+            import json as json_module
+            state = {
+                "alpha_drift": alpha_drift,
+                "regime": regime,
+                "timestamp": datetime.utcnow().isoformat()
+            }
+
+            result = await self.store(
+                content=f"ARF State: {json_module.dumps(state)}",
+                agent_id=target_agent,
+                series="arf_kernel",
+                importance=0.8,
+                epistemic_truths=[f"alpha_drift={alpha_drift:.6f}", f"regime={regime}"],
+                core_concepts=["arf", "state", "drift"],
+                affective_vibe="System",
+                metadata=state
+            )
+            return result.success
+
+        except Exception as e:
+            log.error(f"ARF state store failed: {e}")
+            return False
+
+    async def get_recent_for_synthesis(
+        self,
+        agent_id: Optional[str] = None,
+        limit: int = 50
+    ) -> list[dict]:
+        """
+        Get recent memories for dream synthesis.
+
+        Returns memories that haven't been synthesized yet,
+        sorted by timestamp descending.
+        """
+        target_agent = agent_id or self.agent_id
+        try:
+            resp = await self._request(
+                "GET",
+                f"/recent/{target_agent}",
+                params={"limit": limit}
+            )
+
+            if resp.status_code == 200:
+                data = resp.json()
+                engrams = data.get('engrams', []) if isinstance(data, dict) else data
+
+                # Filter out already-synthesized memories
+                unsynthesized = [
+                    e for e in engrams
+                    if not e.get('metadata', {}).get('synthesized', False)
+                ]
+                return unsynthesized
+
+            return []
+
+        except Exception as e:
+            log.warning(f"Failed to get memories for synthesis: {e}")
+            return []
+
+    async def store_dream(
+        self,
+        dream_type: str,
+        content: str,
+        insights: list[str],
+        patterns: list[str],
+        source_ids: list[str],
+        agent_id: Optional[str] = None
+    ) -> Optional[str]:
+        """
+        Store a synthesized dream to memory.
+
+        Args:
+            dream_type: Type of dream (pattern_synthesis, insight_extraction, etc.)
+            content: Full dream content
+            insights: Key insights extracted
+            patterns: Patterns identified
+            source_ids: IDs of source memories
+            agent_id: Agent identifier
+
+        Returns:
+            Dream memory ID if successful
+        """
+        target_agent = agent_id or self.agent_id
+        try:
+            result = await self.store(
+                content=content,
+                agent_id=target_agent,
+                series=f"dreams_{dream_type}",
+                importance=0.9,
+                epistemic_truths=insights[:5],
+                core_concepts=patterns[:5],
+                affective_vibe="Dreamlike",
+                metadata={
+                    "dream_type": dream_type,
+                    "source_memory_ids": source_ids,
+                    "synthesized_at": datetime.utcnow().isoformat(),
+                    "is_dream": True
+                }
+            )
+            return result.memory_id if result.success else None
+
+        except Exception as e:
+            log.error(f"Dream storage failed: {e}")
+            return None

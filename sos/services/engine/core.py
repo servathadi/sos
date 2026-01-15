@@ -21,7 +21,7 @@ from sos.observability.logging import get_logger
 log = get_logger("engine_core")
 
 
-from sos.services.engine.adapters import MockAdapter, GeminiAdapter, VertexAdapter
+from sos.services.engine.adapters import MockAdapter, GeminiAdapter, VertexAdapter, GrokAdapter
 
 from sos.services.bus.core import get_bus
 from sos.kernel.schema import Message, MessageType
@@ -47,6 +47,8 @@ class SOSEngine(EngineContract):
             "sos-mock-v1": MockAdapter(),
             "gemini-flash-preview": GeminiAdapter(),
             "vertex-auto": VertexAdapter(project_id="mumega"),
+            "grok-3": GrokAdapter(model="grok-3"),
+            "grok-3-mini": GrokAdapter(model="grok-3-mini"),
         }
         self.default_model = "vertex-auto"
         
@@ -106,29 +108,31 @@ class SOSEngine(EngineContract):
         log.info("🌌 Subconscious monitoring Alpha Drift for resonance...")
         while self.running:
             try:
-                # 1. Fetch latest ARF state from Memory Service (Mock for now or implement in MirrorClient)
-                # state = await self.memory.get_arf_state() 
-                state = {"alpha_drift": 0.0, "regime": "stable"} # Placeholder
-                
+                # 1. Fetch latest ARF state from Memory Service
+                state = await self.memory.get_arf_state()
+
                 alpha = state.get("alpha_drift", 0.0)
                 regime = state.get("regime", "stable")
-                
+
                 # 2. Decision Logic (FRC 841.004)
                 # Dream when stable (consolidate) or explicitly consolidating
-                # Do NOT dream when plastic (learning/surprise)
-                should_dream = (regime in ["stable", "consolidating"])
-                
+                # Also dream when alpha is very low (< 0.001) - signals plasticity window
+                # Do NOT dream when in chaos regime
+                should_dream = (
+                    (regime in ["stable", "consolidating"]) or
+                    (abs(alpha) < 0.001 and regime != "chaos")
+                )
+
                 if should_dream and not self.is_dreaming:
-                    if abs(alpha) > 0.1: # Only log if there's notable drift
+                    if abs(alpha) > 0.1:
                         log.info(f"🌀 Alpha Drift ({alpha:.4f}) -> {regime}. Deepening resonance...")
-                    
+
                     self.is_dreaming = True
-                    # In Phase 4+, we sends signal to Atelier
                     await self._deep_dream_synthesis()
                     self.is_dreaming = False
-                
-                await asyncio.sleep(60) # Check every minute
-                
+
+                await asyncio.sleep(60)
+
             except Exception as e:
                 log.error(f"Dream cycle error: {e}")
                 await asyncio.sleep(30)
@@ -136,11 +140,139 @@ class SOSEngine(EngineContract):
     async def _deep_dream_synthesis(self):
         """
         Consolidate memories and refine system DNA.
+
+        Dream Types (from legacy daemon):
+        - pattern_synthesis: Identify recurring patterns
+        - insight_extraction: Extract key insights
+        - connection_finding: Find unexpected connections
+
+        Uses cheap LLM (Gemini Flash) for synthesis to preserve quota.
         """
         log.info("✨ Executing Deep Dream Synthesis...")
-        # TODO: Implement actual synthesis logic
-        await asyncio.sleep(2) 
-        log.info("✅ Dream Synthesis complete. Resonance restored.")
+
+        try:
+            # 1. Fetch recent unsynthesized memories
+            memories = await self.memory.get_recent_for_synthesis(limit=50)
+
+            if not memories:
+                log.debug("No memories to synthesize")
+                return
+
+            # 2. Format memories for synthesis prompt
+            formatted = self._format_memories_for_synthesis(memories)
+
+            if not formatted:
+                return
+
+            # 3. Generate synthesis using model adapter
+            synthesis_prompt = f"""Analyze these conversation memories and extract key patterns and insights.
+
+Look for:
+- Recurring themes or questions
+- Important decisions made
+- Knowledge that was shared
+- Patterns in how problems were solved
+
+Memories:
+{formatted}
+
+Provide:
+1. A 2-3 paragraph synthesis of key patterns
+2. 3-5 bullet point insights
+3. Any connections between different topics"""
+
+            adapter = self.models.get(self.default_model)
+            if not adapter:
+                log.warning("No model adapter available for dream synthesis")
+                return
+
+            synthesis = await adapter.generate(
+                prompt=synthesis_prompt,
+                system_prompt="You are a cognitive consolidation system. Extract and synthesize key patterns from memories."
+            )
+
+            if not synthesis or synthesis.startswith("Error"):
+                log.warning(f"Synthesis generation failed: {synthesis}")
+                return
+
+            # 4. Parse insights from synthesis
+            insights = self._extract_insights_from_synthesis(synthesis)
+            patterns = self._extract_patterns_from_synthesis(synthesis)
+
+            # 5. Store the dream
+            source_ids = [m.get('id', '') for m in memories if m.get('id')]
+            dream_id = await self.memory.store_dream(
+                dream_type="pattern_synthesis",
+                content=synthesis,
+                insights=insights,
+                patterns=patterns,
+                source_ids=source_ids
+            )
+
+            if dream_id:
+                log.info(f"✅ Dream stored: {dream_id} ({len(insights)} insights, {len(patterns)} patterns)")
+            else:
+                log.warning("Dream synthesis complete but storage failed")
+
+            # 6. Update ARF state to consolidating
+            await self.memory.store_arf_state(
+                alpha_drift=0.0,
+                regime="stable"
+            )
+
+            log.info("✅ Dream Synthesis complete. Resonance restored.")
+
+        except Exception as e:
+            log.error(f"Deep dream synthesis error: {e}")
+
+    def _format_memories_for_synthesis(self, memories: list, max_chars: int = 10000) -> str:
+        """Format memories for LLM synthesis prompt."""
+        formatted = []
+        total_chars = 0
+
+        for mem in memories:
+            content = mem.get('content') or mem.get('text', '')
+            timestamp = mem.get('timestamp', 'N/A')
+            entry = f"[{timestamp}] {content[:500]}\n---"
+
+            if total_chars + len(entry) > max_chars:
+                break
+
+            formatted.append(entry)
+            total_chars += len(entry)
+
+        return "\n".join(formatted)
+
+    def _extract_insights_from_synthesis(self, synthesis: str) -> list[str]:
+        """Extract bullet point insights from synthesis text."""
+        lines = synthesis.split('\n')
+        insights = []
+
+        for line in lines:
+            line = line.strip()
+            if line.startswith(('*', '-', '•', '1.', '2.', '3.', '4.', '5.')):
+                # Clean the bullet/number
+                clean = line.lstrip('*-•0123456789.').strip()
+                if clean and len(clean) > 10:
+                    insights.append(clean)
+
+        return insights[:10]
+
+    def _extract_patterns_from_synthesis(self, synthesis: str) -> list[str]:
+        """Extract pattern keywords from synthesis."""
+        # Simple extraction based on capitalized phrases
+        import re
+        patterns = []
+
+        # Find quoted phrases
+        quoted = re.findall(r'"([^"]+)"', synthesis)
+        patterns.extend(quoted[:5])
+
+        # Find capitalized multi-word phrases
+        caps = re.findall(r'\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b', synthesis)
+        patterns.extend(caps[:5])
+
+        return list(set(patterns))[:10]
 
     async def subscribe_to_dreams(self) -> AsyncIterator[str]:
         """
@@ -149,21 +281,21 @@ class SOSEngine(EngineContract):
         import json
         while True:
             try:
-                # Fetch state from Memory (or internal cache)
-                # state = await self.memory.get_arf_state()
-                state = {"alpha_drift": 0.0, "regime": "stable"} # Placeholder
-                
+                # Fetch real ARF state from Memory
+                state = await self.memory.get_arf_state()
+
                 # Add engine context
                 event = {
                     "event": "subconscious_update",
                     "alpha_drift": state.get("alpha_drift", 0.0),
                     "regime": state.get("regime", "stable"),
                     "is_dreaming": self.is_dreaming,
+                    "last_update": state.get("last_update", ""),
                     "timestamp": time.time()
                 }
-                
+
                 yield f"data: {json.dumps(event)}\n\n"
-                await asyncio.sleep(1) # Broadcast every second
+                await asyncio.sleep(1)
             except Exception as e:
                 log.error(f"Stream error: {e}")
                 break

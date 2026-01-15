@@ -430,3 +430,138 @@ class MockAdapter(ModelAdapter):
         yield "Mock "
         yield "Streaming "
         yield "Response"
+
+
+class GrokAdapter(ModelAdapter):
+    """
+    Adapter for xAI's Grok models.
+
+    Uses OpenAI-compatible API at https://api.x.ai/v1
+    Grok models available:
+    - grok-3 (latest)
+    - grok-3-mini (fast/cheap)
+    - grok-2
+    """
+
+    def __init__(self, api_key: str = None, model: str = "grok-3"):
+        self.api_key = api_key or os.getenv("XAI_API_KEY") or os.getenv("GROK_API_KEY")
+        self.model = model
+        self.base_url = "https://api.x.ai/v1"
+        self.client = None
+        self._init_client()
+
+    def _init_client(self):
+        """Initialize OpenAI-compatible client for xAI."""
+        if not self.api_key:
+            log.warning("GrokAdapter: No XAI_API_KEY set")
+            return
+
+        try:
+            from openai import OpenAI
+            self.client = OpenAI(
+                api_key=self.api_key,
+                base_url=self.base_url
+            )
+            log.info(f"GrokAdapter initialized with model {self.model}")
+        except ImportError:
+            log.error("openai package not installed for GrokAdapter")
+
+    def get_model_id(self) -> str:
+        return self.model
+
+    async def generate(
+        self,
+        prompt: str,
+        system_prompt: str = None,
+        tools: List[Dict] = None
+    ) -> str:
+        """
+        Generate response using Grok.
+        """
+        if not self.client:
+            return "Error: Grok client not initialized (check XAI_API_KEY)"
+
+        try:
+            messages = []
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
+            messages.append({"role": "user", "content": prompt})
+
+            kwargs = {
+                "model": self.model,
+                "messages": messages,
+                "temperature": 0.7,
+                "max_tokens": 8192
+            }
+
+            # Add tools if provided
+            if tools:
+                kwargs["tools"] = [
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": t["name"],
+                            "description": t["description"],
+                            "parameters": t["parameters"]
+                        }
+                    }
+                    for t in tools
+                ]
+
+            response = await asyncio.to_thread(
+                self.client.chat.completions.create,
+                **kwargs
+            )
+
+            # Handle tool calls
+            if response.choices[0].message.tool_calls:
+                tool_call = response.choices[0].message.tool_calls[0]
+                return json.dumps({
+                    "tool_call": {
+                        "name": tool_call.function.name,
+                        "arguments": json.loads(tool_call.function.arguments)
+                    }
+                })
+
+            return response.choices[0].message.content
+
+        except Exception as e:
+            log.error(f"Grok generation failed: {e}")
+            return f"Error: Grok generation failed ({e})"
+
+    async def generate_stream(
+        self,
+        prompt: str,
+        system_prompt: str = None
+    ) -> AsyncIterator[str]:
+        """
+        Stream response from Grok.
+        """
+        if not self.client:
+            yield "Error: Grok client not initialized"
+            return
+
+        try:
+            messages = []
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
+            messages.append({"role": "user", "content": prompt})
+
+            def _stream():
+                return self.client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    temperature=0.7,
+                    max_tokens=8192,
+                    stream=True
+                )
+
+            stream = await asyncio.to_thread(_stream)
+
+            for chunk in stream:
+                if chunk.choices[0].delta.content:
+                    yield chunk.choices[0].delta.content
+
+        except Exception as e:
+            log.error(f"Grok streaming failed: {e}")
+            yield f"Error: Grok streaming failed ({e})"
