@@ -38,11 +38,11 @@ class VertexSovereignAdapter(ModelAdapter):
         self.accountant = get_accountant()
         self._init_vertex()
 
-    def _init_client(self):
+    def _init_client(self) -> None:
         # Kept for compatibility with base class
         pass
 
-    def _init_vertex(self):
+    def _init_vertex(self) -> None:
         try:
             import vertexai
             vertexai.init(project=self.project_id, location=self.location)
@@ -102,6 +102,40 @@ class VertexSovereignAdapter(ModelAdapter):
             log.error(f"Vertex Sovereign failed: {e}")
             return f"Error: {e}"
 
+    async def generate_stream(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None
+    ) -> AsyncIterator[str]:
+        """Stream content from Vertex AI Sovereign adapter."""
+        if not self.client:
+            yield "Error: Vertex AI not initialized"
+            return
+
+        try:
+            from vertexai.generative_models import GenerativeModel
+
+            model_name = self.get_model_id("chat")
+            model = GenerativeModel(model_name, system_instruction=system_prompt)
+
+            def _stream():
+                return model.generate_content(
+                    prompt,
+                    generation_config={"temperature": 0.7, "max_output_tokens": 8192},
+                    stream=True
+                )
+
+            response_stream = await asyncio.to_thread(_stream)
+
+            for chunk in response_stream:
+                if chunk.text:
+                    yield chunk.text
+
+        except Exception as e:
+            log.error(f"Vertex Sovereign streaming failed: {e}")
+            yield f"Error: {e}"
+
+
 class VertexAdapter(ModelAdapter):
     """
     Enterprise Adapter for Vertex AI (Gemini 1.5 Pro/Flash).
@@ -112,10 +146,10 @@ class VertexAdapter(ModelAdapter):
         self.location = location
         self.accountant = get_accountant()
         self.client = None
-        self.model_name = "gemini-3-flash-preview" 
+        self.model_name = "gemini-3-flash-preview"
         self._init_client()
 
-    def _init_client(self):
+    def _init_client(self) -> None:
         try:
             import vertexai
             from vertexai.generative_models import GenerativeModel
@@ -292,7 +326,7 @@ class GeminiAdapter(ModelAdapter):
         self.client = None
         self._current_key_obj = None
 
-    def _init_client(self):
+    def _init_client(self) -> None:
         key_obj = self.rotator.get_best_key()
         if key_obj:
             self._current_key_obj = key_obj
@@ -450,7 +484,7 @@ class GrokAdapter(ModelAdapter):
         self.client = None
         self._init_client()
 
-    def _init_client(self):
+    def _init_client(self) -> None:
         """Initialize OpenAI-compatible client for xAI."""
         if not self.api_key:
             log.warning("GrokAdapter: No XAI_API_KEY set")
