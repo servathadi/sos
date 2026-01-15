@@ -142,11 +142,12 @@ class VertexAdapter(ModelAdapter):
         if not self.client:
             return "Error: Vertex AI not initialized"
 
-        # Strategy: Target Gemini 3 Flash specifically as requested
+        # Strategy: Hunt for the correct high-performance model ID
         models_to_try = [
-            "gemini-3-flash-preview",
-            "gemini-experimental",
             "gemini-2.0-flash-exp",
+            "gemini-2.0-flash-001",
+            "gemini-2.0-pro-exp",
+            "gemini-1.5-pro",
             "gemini-1.5-flash"
         ]
         
