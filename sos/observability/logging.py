@@ -7,6 +7,8 @@ JSON-formatted logging with trace propagation for all SOS services.
 from __future__ import annotations
 
 import json
+import os
+import re
 import sys
 from datetime import datetime, timezone
 from typing import Any, Optional
@@ -17,6 +19,35 @@ from sos.observability.tracing import trace_id_var, span_id_var
 
 # Context variable for agent propagation (logging-specific)
 agent_id_var: ContextVar[str] = ContextVar("agent_id", default="")
+
+# Emoji stripping configuration
+# Set SOS_LOG_EMOJIS=0 to strip emojis from log messages (enterprise mode)
+_STRIP_EMOJIS = os.getenv("SOS_LOG_EMOJIS", "1").lower() in ("0", "false", "no")
+
+# Regex pattern to match most emojis
+_EMOJI_PATTERN = re.compile(
+    "["
+    "\U0001F600-\U0001F64F"  # emoticons
+    "\U0001F300-\U0001F5FF"  # symbols & pictographs
+    "\U0001F680-\U0001F6FF"  # transport & map symbols
+    "\U0001F1E0-\U0001F1FF"  # flags
+    "\U00002702-\U000027B0"  # dingbats
+    "\U0001F900-\U0001F9FF"  # supplemental symbols
+    "\U00002600-\U000026FF"  # misc symbols
+    "\U0001FA00-\U0001FA6F"  # chess symbols
+    "\U0001FA70-\U0001FAFF"  # symbols extended
+    "\U0000FE00-\U0000FE0F"  # variation selectors
+    "\U0000200D"             # zero width joiner
+    "]+",
+    flags=re.UNICODE
+)
+
+
+def _strip_emojis(text: str) -> str:
+    """Strip emojis from text if SOS_LOG_EMOJIS=0."""
+    if not _STRIP_EMOJIS:
+        return text
+    return _EMOJI_PATTERN.sub("", text).strip()
 
 
 class SOSLogger:
@@ -58,11 +89,14 @@ class SOSLogger:
         if not self._should_log(level):
             return
 
+        # Strip emojis if enterprise mode enabled (SOS_LOG_EMOJIS=0)
+        clean_msg = _strip_emojis(msg)
+
         record: dict[str, Any] = {
             "ts": datetime.now(timezone.utc).isoformat(),
             "level": level,
             "service": self.service,
-            "msg": msg,
+            "msg": clean_msg,
         }
 
         # Add trace context if available
@@ -91,6 +125,10 @@ class SOSLogger:
 
     def warn(self, msg: str, **extra: Any) -> None:
         """Log warning message."""
+        self._emit("warn", msg, **extra)
+
+    def warning(self, msg: str, **extra: Any) -> None:
+        """Log warning message (alias for warn)."""
         self._emit("warn", msg, **extra)
 
     def error(self, msg: str, **extra: Any) -> None:
