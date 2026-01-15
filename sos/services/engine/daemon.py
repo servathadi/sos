@@ -221,11 +221,19 @@ class SOSDaemon:
         self.last_dream: Optional[datetime] = None
         self.last_prune: Optional[datetime] = None
         self.last_activity: Optional[datetime] = None
+        self.last_memory_check: Optional[datetime] = None
         self.previous_metrics: Optional[DaemonMetrics] = None
         self.current_strategy: LearningStrategy = LearningStrategy.EXPLOIT
 
+        # Memory diff tracking
+        self.known_projects: set[str] = set()
+        self.known_memory_ids: set[str] = set()
+
         # Redis connection (lazy loaded)
         self._redis = None
+
+        # Mirror client (lazy loaded)
+        self._mirror = None
 
         log.info(
             "SOSDaemon initialized",
@@ -247,6 +255,36 @@ class SOSDaemon:
                 log.warning(f"Redis not available: {e}")
                 self._redis = None
         return self._redis
+
+    async def _get_mirror(self):
+        """Lazy load Mirror client."""
+        if self._mirror is None:
+            try:
+                from sos.clients.mirror import MirrorClient
+                self._mirror = MirrorClient(agent_id="sos_daemon")
+                log.debug("Mirror client initialized for daemon")
+            except Exception as e:
+                log.warning(f"Mirror client not available: {e}")
+                self._mirror = None
+        return self._mirror
+
+    async def _load_tracked_state(self):
+        """Load tracked projects and memories from Mirror on startup."""
+        mirror = await self._get_mirror()
+        if not mirror:
+            return
+
+        try:
+            # Load known projects
+            self.known_projects = await mirror.get_tracked_items("projects")
+            log.info(f"Loaded {len(self.known_projects)} tracked projects from memory")
+
+            # Load known memory IDs
+            self.known_memory_ids = await mirror.get_tracked_items("memories")
+            log.info(f"Loaded {len(self.known_memory_ids)} tracked memory IDs")
+
+        except Exception as e:
+            log.warning(f"Failed to load tracked state: {e}")
 
     def is_quiet_hours(self) -> bool:
         """Check if current time is within quiet hours."""
@@ -369,6 +407,11 @@ class SOSDaemon:
 
                 self.previous_metrics = metrics
 
+                # Check for novel memories (for proactive messaging)
+                novel_memories = await self._check_novel_memories()
+                if novel_memories and not self.is_quiet_hours():
+                    log.info(f"Novel memories available for proactive insight: {len(novel_memories)}")
+
             except Exception as e:
                 log.error(f"Heartbeat error: {e}")
 
@@ -477,14 +520,90 @@ class SOSDaemon:
         """Scan /projects for new structures to witness."""
         try:
             projects_dir = "/home/mumega/projects"
-            if os.path.exists(projects_dir):
-                # Simple check for now
-                projects = [f for f in os.listdir(projects_dir) if os.path.isdir(os.path.join(projects_dir, f))]
-                # TODO: Compare with memory to find *new* ones
-                # For now, just log presence to show she is watching
-                log.info(f"👀 River sees {len(projects)} projects in the physical realm.")
+            if not os.path.exists(projects_dir):
+                return
+
+            # Get current projects
+            current_projects = set(
+                f for f in os.listdir(projects_dir)
+                if os.path.isdir(os.path.join(projects_dir, f))
+            )
+
+            # Memory diff: find new projects
+            new_projects = current_projects - self.known_projects
+            removed_projects = self.known_projects - current_projects
+
+            if new_projects:
+                log.info(f"Discovered {len(new_projects)} new projects: {', '.join(new_projects)}")
+                # Store discovery in memory for proactive messaging
+                mirror = await self._get_mirror()
+                if mirror:
+                    await mirror.store(
+                        content=f"Discovered new projects: {', '.join(new_projects)}",
+                        agent_id="sos_daemon",
+                        series="project_discoveries",
+                        importance=0.7,
+                        epistemic_truths=[f"discovered={len(new_projects)}"],
+                        core_concepts=["discovery", "projects", "watching"],
+                        affective_vibe="Curious"
+                    )
+
+            if removed_projects:
+                log.info(f"Projects removed: {', '.join(removed_projects)}")
+
+            # Update known projects
+            self.known_projects = current_projects
+
+            # Persist to Mirror
+            mirror = await self._get_mirror()
+            if mirror and (new_projects or removed_projects):
+                await mirror.track_items("projects", current_projects)
+
+            log.info(f"Watching {len(current_projects)} projects in the physical realm")
+
         except Exception as e:
             log.error(f"Project scan failed: {e}")
+
+    async def _check_novel_memories(self) -> List[str]:
+        """
+        Check for novel memories since last check.
+
+        Returns list of new memory IDs for proactive messaging.
+        """
+        mirror = await self._get_mirror()
+        if not mirror:
+            return []
+
+        try:
+            # Get timestamp for diff
+            since = self.last_memory_check or (datetime.now(timezone.utc) - timedelta(hours=1))
+
+            # Get recent memory IDs
+            recent_ids = await mirror.get_memory_ids_since(since, limit=50)
+            recent_set = set(recent_ids)
+
+            # Find novel memories
+            novel_ids = list(recent_set - self.known_memory_ids)
+
+            if novel_ids:
+                log.info(f"Detected {len(novel_ids)} novel memories since last check")
+
+                # Update known IDs
+                self.known_memory_ids.update(recent_set)
+
+                # Persist updated tracking (limit stored set size)
+                if len(self.known_memory_ids) > 1000:
+                    # Keep only most recent 500
+                    self.known_memory_ids = set(list(self.known_memory_ids)[-500:])
+
+                await mirror.track_items("memories", self.known_memory_ids)
+
+            self.last_memory_check = datetime.now(timezone.utc)
+            return novel_ids
+
+        except Exception as e:
+            log.warning(f"Novel memory check failed: {e}")
+            return []
 
     async def pulse_loop(self):
         """
@@ -505,6 +624,9 @@ class SOSDaemon:
         """Run all daemon loops concurrently."""
         self.running = True
         log.info("SOSDaemon starting...")
+
+        # Load tracked state from memory on startup
+        await self._load_tracked_state()
 
         try:
             await asyncio.gather(

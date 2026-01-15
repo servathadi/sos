@@ -1,13 +1,16 @@
 import asyncio
 import sys
 import json
+import logging
 from sos.clients.tools import ToolsClient
+
+log = logging.getLogger(__name__)
 
 async def main():
     client = ToolsClient("http://localhost:8003")
-    
-    print("💎 Testing Deep Research Tool (Native MCP)...")
-    
+
+    print("Testing Deep Research Tool (Native MCP)...")
+
     query = "Python"
     payload = {
         "tool_name": "deep_research",
@@ -17,13 +20,13 @@ async def main():
             "depth": "standard"
         }
     }
-    
+
     try:
-        print(f"🚀 Dispatching Research for: '{query}'...")
+        print(f"Dispatching Research for: '{query}'...")
         # Note: ToolsClient.execute handles the payload routing
         result = await client.execute(payload)
-        
-        print(f"DEBUG: Raw Result: {result}")
+
+        log.debug(f"Raw Result: {result}")
         
         if "error" in result:
             print(f"❌ Tool Error: {result['error']}")

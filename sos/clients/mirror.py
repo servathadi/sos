@@ -391,3 +391,142 @@ class MirrorClient(MemoryContract):
         except Exception as e:
             log.error(f"Dream storage failed: {e}")
             return None
+
+    async def get_tracked_items(
+        self,
+        category: str,
+        agent_id: Optional[str] = None
+    ) -> set[str]:
+        """
+        Get set of tracked item IDs for a category.
+
+        Used for memory diff - tracking what the daemon has already seen.
+
+        Args:
+            category: Category of items (e.g., 'projects', 'memories', 'agents')
+            agent_id: Agent identifier
+
+        Returns:
+            Set of item identifiers
+        """
+        target_agent = agent_id or self.agent_id
+        try:
+            resp = await self._request(
+                "POST",
+                "/search",
+                json={
+                    "query": f"tracked {category} items",
+                    "agent_id": target_agent,
+                    "limit": 1,
+                    "series": f"daemon_tracking_{category}"
+                }
+            )
+
+            if resp.status_code == 200:
+                data = resp.json()
+                results = data.get('results', []) if isinstance(data, dict) else data
+
+                if results:
+                    metadata = results[0].get('metadata', {})
+                    items = metadata.get('tracked_items', [])
+                    return set(items)
+
+            return set()
+
+        except Exception as e:
+            log.debug(f"Failed to get tracked items for {category}: {e}")
+            return set()
+
+    async def track_items(
+        self,
+        category: str,
+        items: set[str],
+        agent_id: Optional[str] = None
+    ) -> bool:
+        """
+        Store tracked item IDs for a category.
+
+        Args:
+            category: Category of items (e.g., 'projects', 'memories', 'agents')
+            items: Set of item identifiers to track
+            agent_id: Agent identifier
+
+        Returns:
+            True if stored successfully
+        """
+        target_agent = agent_id or self.agent_id
+        try:
+            result = await self.store(
+                content=f"Tracked {len(items)} {category} items",
+                agent_id=target_agent,
+                series=f"daemon_tracking_{category}",
+                importance=0.3,
+                epistemic_truths=[f"count={len(items)}"],
+                core_concepts=["tracking", "daemon", category],
+                affective_vibe="System",
+                metadata={
+                    "tracked_items": list(items),
+                    "category": category,
+                    "updated_at": datetime.utcnow().isoformat()
+                }
+            )
+            return result.success
+
+        except Exception as e:
+            log.error(f"Failed to track items for {category}: {e}")
+            return False
+
+    async def get_memory_ids_since(
+        self,
+        since: datetime,
+        agent_id: Optional[str] = None,
+        limit: int = 100
+    ) -> list[str]:
+        """
+        Get memory IDs created since a given timestamp.
+
+        Used for detecting novel memories for proactive messaging.
+
+        Args:
+            since: Timestamp to search from
+            agent_id: Agent identifier
+            limit: Maximum number of IDs to return
+
+        Returns:
+            List of memory IDs
+        """
+        target_agent = agent_id or self.agent_id
+        try:
+            resp = await self._request(
+                "GET",
+                f"/recent/{target_agent}",
+                params={"limit": limit}
+            )
+
+            if resp.status_code == 200:
+                data = resp.json()
+                engrams = data.get('engrams', []) if isinstance(data, dict) else data
+
+                # Filter by timestamp
+                memory_ids = []
+                for e in engrams:
+                    # Check timestamp in metadata or created_at field
+                    ts_str = e.get('created_at') or e.get('metadata', {}).get('timestamp')
+                    if ts_str:
+                        try:
+                            ts = datetime.fromisoformat(ts_str.replace('Z', '+00:00'))
+                            if ts >= since:
+                                memory_ids.append(e.get('id', ''))
+                        except (ValueError, TypeError):
+                            # If can't parse timestamp, include it
+                            memory_ids.append(e.get('id', ''))
+                    else:
+                        memory_ids.append(e.get('id', ''))
+
+                return [mid for mid in memory_ids if mid]
+
+            return []
+
+        except Exception as e:
+            log.warning(f"Failed to get memory IDs since {since}: {e}")
+            return []
