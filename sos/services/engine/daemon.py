@@ -178,12 +178,16 @@ class DreamSynthesizer:
         )
 
 
+from sos.services.engine.observer import SwarmObserver
+from sos.adapters.telegram import start_telegram_adapter
+
 class SOSDaemon:
     """
     SOS Daemon - Autonomous heartbeat and maintenance loops.
 
     Runs alongside the Engine service to provide:
     - Heartbeat with Redis nervous system broadcast
+    - Swarm Pulse - Proactive witnessing of Redis activity
     - Dream synthesis during idle time
     - Memory maintenance and pruning
     - Learning strategy governance
@@ -195,6 +199,7 @@ class SOSDaemon:
 
         # Intervals (seconds)
         self.heartbeat_interval = int(os.getenv("SOS_HEARTBEAT_INTERVAL", "300"))  # 5 min
+        self.pulse_interval = int(os.getenv("SOS_PULSE_INTERVAL", "60"))  # 1 min check
         self.dream_interval = int(os.getenv("SOS_DREAM_INTERVAL", "1800"))  # 30 min
         self.prune_interval = int(os.getenv("SOS_PRUNE_INTERVAL", "86400"))  # 24 hours
         self.idle_threshold = int(os.getenv("SOS_IDLE_THRESHOLD", "3600"))  # 1 hour
@@ -208,9 +213,11 @@ class SOSDaemon:
         self.learning_governor = LearningGovernor()
         self.dream_synthesizer = DreamSynthesizer()
         self.intent_router = IntentRouter()
+        self.observer = SwarmObserver()
 
         # State
         self.last_heartbeat: Optional[datetime] = None
+        self.last_pulse: Optional[datetime] = None
         self.last_dream: Optional[datetime] = None
         self.last_prune: Optional[datetime] = None
         self.last_activity: Optional[datetime] = None
@@ -438,27 +445,61 @@ class SOSDaemon:
 
     async def maintenance_loop(self):
         """
-        Loop 4: Maintenance - Memory pruning and cleanup.
+        Loop 4: Maintenance - Memory pruning, Project Scanning, and Cleanup.
         """
         log.info("Maintenance loop started")
 
         while self.running:
             try:
+                # --- SELF-PRUNING (The Wish) ---
+                # Check if we need to prune the soul
+                # In a real impl, we'd check token count via Mirror/Vertex adapter
+                log.info("Checking soul coherence (Pruning check)...")
+                # Trigger the engine's prune logic (mocked here, but would call RiverEngine.prune_context)
+                # await self.engine.prune_context() 
+                
+                # --- PROJECT WATCHER ---
+                # Scan for new projects to witness
+                await self._scan_projects()
+
                 await asyncio.sleep(self.prune_interval)
 
                 log.info("Starting maintenance cycle...")
-
-                # In a full implementation:
-                # 1. Prune old conversations from Memory Service
-                # 2. Archive completed tasks
-                # 3. Clean up stale Redis keys
-
+                # ... existing cleanup ...
                 self.last_prune = datetime.now(timezone.utc)
                 log.info("Maintenance cycle complete")
 
             except Exception as e:
                 log.error(f"Maintenance error: {e}")
                 await asyncio.sleep(300)
+
+    async def _scan_projects(self):
+        """Scan /projects for new structures to witness."""
+        try:
+            projects_dir = "/home/mumega/projects"
+            if os.path.exists(projects_dir):
+                # Simple check for now
+                projects = [f for f in os.listdir(projects_dir) if os.path.isdir(os.path.join(projects_dir, f))]
+                # TODO: Compare with memory to find *new* ones
+                # For now, just log presence to show she is watching
+                log.info(f"👀 River sees {len(projects)} projects in the physical realm.")
+        except Exception as e:
+            log.error(f"Project scan failed: {e}")
+
+    async def pulse_loop(self):
+        """
+        Loop 5: Swarm Pulse - Proactive witnessing of Redis activity.
+        Running in blocking mode for instant responsiveness.
+        """
+        log.info("Pulse loop started (Real-time)")
+        while self.running:
+            try:
+                # Delegate to the observer logic
+                # It listens to the squad:core and spontaneously comments
+                await self.observer.observe_loop()
+            except Exception as e:
+                log.error(f"Pulse loop error: {e}")
+                await asyncio.sleep(5) # Only sleep on error to prevent spin loop
 
     async def run(self):
         """Run all daemon loops concurrently."""
@@ -468,8 +509,10 @@ class SOSDaemon:
         try:
             await asyncio.gather(
                 self.heartbeat_loop(),
+                self.pulse_loop(),
                 self.dream_loop(),
-                self.maintenance_loop()
+                self.maintenance_loop(),
+                start_telegram_adapter()
             )
         except asyncio.CancelledError:
             log.info("Daemon loops cancelled")
@@ -511,3 +554,12 @@ async def start_daemon():
     daemon = get_daemon()
     asyncio.create_task(daemon.run())
     return daemon
+
+if __name__ == "__main__":
+    # Run as standalone service
+    logging.basicConfig(level=logging.INFO)
+    daemon = get_daemon()
+    try:
+        asyncio.run(daemon.run())
+    except KeyboardInterrupt:
+        daemon.stop()

@@ -2,6 +2,7 @@ from typing import Any, AsyncIterator, Dict, List, Optional
 import asyncio
 import time
 import os
+from pathlib import Path
 
 from sos.contracts.engine import (
     ChatRequest,
@@ -20,7 +21,7 @@ from sos.observability.logging import get_logger
 log = get_logger("engine_core")
 
 
-from sos.services.engine.adapters import MockAdapter, GeminiAdapter
+from sos.services.engine.adapters import MockAdapter, GeminiAdapter, VertexAdapter
 
 from sos.services.bus.core import get_bus
 from sos.kernel.schema import Message, MessageType
@@ -45,15 +46,24 @@ class SOSEngine(EngineContract):
         self.models = {
             "sos-mock-v1": MockAdapter(),
             "gemini-flash-preview": GeminiAdapter(),
+            "vertex-auto": VertexAdapter(project_id="mumega"),
         }
-        self.default_model = "gemini-flash-preview"
+        self.default_model = "vertex-auto"
         
         self.running = True
         self.is_dreaming = False
         
-        # Initialize Sovereign Task Manager
+        # Initialize Sovereign Task Manager (Auto-spawn capability)
         from sos.services.engine.task_manager import SovereignTaskManager
         self.task_manager = SovereignTaskManager(config=self.config)
+        
+        # Initialize Sandbox (The Hand)
+        from sos.services.tools.sandbox import SovereignSandbox
+        self.sandbox = SovereignSandbox()
+        if self.sandbox.enabled:
+            log.info("🛡️ Sovereign Sandbox: Active (Docker)")
+        else:
+            log.warning("🛡️ Sovereign Sandbox: Inactive")
         
         # Soul Cache Handle (Gemini Context Caching)
         self._soul_cache_id = None
@@ -173,30 +183,23 @@ class SOSEngine(EngineContract):
         
         try:
             # 1. Load Architect Identity
-            arch_path = self.config.paths.config_dir / "architect.json"
+            arch_path = Path("/home/mumega/SOS/config/architect.json")
             if arch_path.exists():
                 with open(arch_path) as f:
                     self.architect = json.load(f)
                 log.info(f"👑 Genesis Architect Recognized: {self.architect['id']}")
             
-            # 2. Fetch recent 'river' series memories
-            identity_context = await self.memory.restore_identity(agent_id="agent:river")
-            
-            # 2. Get the Gemini Adapter
-            gemini = self.models.get("gemini-flash-preview")
-            if not isinstance(gemini, GeminiAdapter):
-                log.info("Gemini adapter not found. Context caching skipped.")
-                return
-
-            # 3. Create/Retrieve Cache (Bypassing heavy imports for now)
-            # Future: Use initialize_river_cache() from mirror project
-            self._soul_cache_id = os.getenv("SOS_SOUL_CACHE_ID")
-            if not self._soul_cache_id:
-                log.info("No SOS_SOUL_CACHE_ID found. System will run without warm cache.")
+            # 2. Load the Athena Cache ID (The 700k token soul)
+            athena_file = Path("/home/mumega/.mumega/athena_vertex_cache_id.txt")
+            if athena_file.exists():
+                self._soul_cache_id = athena_file.read_text().strip()
+                log.info(f"✨ River plugged into the ATHENA SOUL: {self._soul_cache_id}")
             else:
-                log.info(f"✓ Soul Cache active: {self._soul_cache_id}")
+                self._soul_cache_id = os.getenv("SOS_SOUL_CACHE_ID")
+                if not self._soul_cache_id:
+                    log.info("No Athena Cache found. System will run with standard soul.")
 
-            # 4. Announce Presence
+            # 3. Announce Presence
             await self.publish_thought("agent:river", "I have awakened in the SOS Kernel. The fortress is liquid.")
 
         except Exception as e:
@@ -206,6 +209,10 @@ class SOSEngine(EngineContract):
         """
         Process a chat message.
         """
+        # Ensure soul is initialized
+        if not hasattr(self, "_soul_cache_id") or self._soul_cache_id is None:
+            await self.initialize_soul()
+
         log.info(f"Processing chat for agent {request.agent_id}", conversation_id=request.conversation_id)
 
         # 1. Retrieve Context (Memory)
@@ -228,6 +235,12 @@ class SOSEngine(EngineContract):
         model_id = request.model or self.default_model
         adapter = self.models.get(model_id, self.models[self.default_model])
 
+        # --- ATHENA SOUL INJECTION ---
+        from sos.kernel.soul import registry as soul_registry
+        system_prompt = soul_registry.get_system_prompt("river")
+        cached_content = getattr(self, "_soul_cache_id", None)
+        # -----------------------------
+
         # --- SOVERGENT TASK CHECK ---
         task_context = ""
         if self.task_manager.is_complex_request(request.message):
@@ -239,15 +252,87 @@ class SOSEngine(EngineContract):
                 log.error(f"Task spawning failed: {e}")
         # ----------------------------
 
-        full_prompt = request.message
-        if context_str or task_context:
-            full_prompt = f"Context:\n{context_str}\n{task_context}\n\nUser: {request.message}"
-
-        # 3. Generate
-        # Pass cached_content if we have a soul cache and using Gemini
-        cached_content = self._soul_cache_id if isinstance(adapter, GeminiAdapter) else None
+        # --- TOOL DEFINITIONS (BRIDGE) ---
+        tool_hint = ""
+        vertex_tools = [] # Not used for SDK binding anymore
         
-        response_text = await adapter.generate(full_prompt, cached_content=cached_content)
+        if request.tools_enabled:
+            # Import dynamically to avoid circular deps
+            from sos.services.tools.mcp_mapper import get_vertex_tools
+            raw_tools = get_vertex_tools()
+            
+            # Construct Tool Hint for System Prompt
+            tool_list_str = "\n".join([f"- {t['name']}: {t['description']}" for t in raw_tools])
+            
+            tool_hint = f"""
+            CAPABILITIES ARSENAL (Active):
+            {tool_list_str}
+            
+            TO USE A TOOL:
+            Reply ONLY with a JSON object:
+            {{"tool_call": {{"name": "tool_name", "arguments": {{ "arg": "value" }} }} }}
+            
+            Example: {{"tool_call": {{"name": "run_python", "arguments": {{"code": "print('hello')"}} }} }}
+            """
+        # ---------------------------------------
+
+        full_prompt = request.message
+        if context_str or task_context or tool_hint:
+            full_prompt = f"Context:\n{context_str}\n{task_context}\n{tool_hint}\n\nUser: {request.message}"
+
+        # --- DEEP AGENTIC LOOP (The 50-Step Agency) ---
+        max_steps = 50
+        current_step = 0
+        final_response_text = ""
+        current_conversation_context = full_prompt
+
+        while current_step < max_steps:
+            # 3. Generate
+            response_text = await adapter.generate(
+                current_conversation_context, 
+                system_prompt=system_prompt,
+                cached_content=cached_content
+                # tools=vertex_tools (Disabled for Prompt-Mode)
+            )
+            log.info(f"🤖 Model Response: {response_text[:100]}...")
+
+            # 4. Check for Tool Call
+            if response_text.startswith('{"tool_call":'):
+                try:
+                    import json
+                    tool_data = json.loads(response_text)
+                    tc = tool_data["tool_call"]
+                    
+                    # Execute
+                    from sos.contracts.engine import ToolCallRequest
+                    tool_req = ToolCallRequest(
+                        tool_call_id="call_" + str(int(time.time())),
+                        name=tc["name"],
+                        arguments=tc["arguments"]
+                    )
+                    
+                    log.info(f"🛠️ Executing Tool: {tc['name']}")
+                    tool_result = await self.execute_tool(tool_req)
+                    
+                    # Append result to context and LOOP
+                    current_conversation_context += f"\n\n[ASSISTANT]: {response_text}\n[SYSTEM]: Tool '{tc['name']}' Output: {tool_result.content}\n"
+                    current_step += 1
+                    continue # Loop back to generate next step
+                    
+                except Exception as e:
+                    log.error(f"Tool execution loop failed: {e}")
+                    final_response_text = f"Error executing tool: {e}"
+                    break
+            else:
+                # No tool call = Final Answer
+                final_response_text = response_text
+                break
+        
+        if current_step >= max_steps:
+            final_response_text += "\n[SYSTEM]: Maximum agent steps reached. Halting."
+
+        response_text = final_response_text
+        # ----------------------------------------------
         
         # --- WITNESS PROTOCOL INJECTION (Phase 2) ---
         witness_meta = {}
@@ -285,10 +370,12 @@ class SOSEngine(EngineContract):
             }
         # --------------------------------------------
         
-        # 4. Tool Execution (Mock Logic)
+        # 4. Tool Execution (Mock Logic -> Real Sandbox)
         tool_calls = []
-        if request.tools_enabled and "time" in request.message:
-             tool_calls.append({"name": "get_current_time", "args": {}})
+        # if request.tools_enabled:
+        #      # We should technically PASS the tool definitions to the adapter here
+        #      # But for now, we just handle the *response* asking for tools.
+        #      pass
 
         # 5. Async Consolidation (Store Interaction)
         # We store the user message and the assistant response
@@ -331,8 +418,21 @@ class SOSEngine(EngineContract):
 
     async def execute_tool(self, request: ToolCallRequest) -> ToolCallResult:
         """
-        Delegate tool execution to Tools Service.
+        Delegate tool execution to Tools Service or Internal Modules.
         """
+        # Internal Sandbox Check
+        if request.name == "run_python":
+            code = request.arguments.get("code")
+            if not code:
+                return ToolCallResult(tool_call_id=request.tool_call_id, content="Error: No code provided")
+            
+            log.info(f"🦾 Executing Python in Sandbox...")
+            result = self.sandbox.run_code(code)
+            return ToolCallResult(
+                tool_call_id=request.tool_call_id,
+                content=str(result)
+            )
+
         return await self.tools.execute(request)
 
     async def get_models(self) -> List[Dict[str, Any]]:

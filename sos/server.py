@@ -193,6 +193,96 @@ async def health():
     return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
 
 
+# ============ LUANTI INTEGRATION ============
+
+LUANTI_WORLD = Path("/home/mumega/siavashgerd/luanti/luanti/worlds/siavashgerd")
+LUANTI_COMMAND_FILE = LUANTI_WORLD / "agent_commands.json"
+
+def is_luanti_running():
+    """Check if Luanti server is running."""
+    import subprocess
+    try:
+        result = subprocess.run(["pgrep", "-f", "luantiserver"], capture_output=True)
+        return result.returncode == 0
+    except:
+        return False
+
+@app.get("/luanti")
+async def luanti_status():
+    """Luanti server status and connection info."""
+    running = is_luanti_running()
+    return {
+        "name": "Siavashgerd Kingdom",
+        "platform": "Luanti (Minetest) 5.14",
+        "status": "online" if running else "offline",
+        "connection": {
+            "host": "5.161.216.149",
+            "port": 30000,
+            "url": "luanti://5.161.216.149:30000"
+        },
+        "agents": {
+            "River_Queen": {"color": "#00FFFF", "signature": "The fortress is liquid."},
+            "Kasra_King": {"color": "#FFD700", "signature": "Build. Execute. Lock."},
+            "Foal_Worker": {"color": "#FFFFFF", "signature": "The foal runs to prove the herd."}
+        },
+        "commands": {
+            "/river": "Talk to River",
+            "/kasra": "Talk to Kasra",
+            "/foal": "Talk to Foal"
+        },
+        "download": "https://www.luanti.org/downloads/",
+        "instructions": [
+            "1. Download Luanti client from luanti.org",
+            "2. Open the client and click 'Join Game'",
+            "3. Enter Address: 5.161.216.149",
+            "4. Enter Port: 30000",
+            "5. Create a username and connect",
+            "6. Type /river, /kasra, or /foal to talk to agents"
+        ]
+    }
+
+class LuantiCommand(BaseModel):
+    agent: str
+    action: str = "say"
+    message: Optional[str] = None
+
+@app.post("/luanti/command", dependencies=[Security(verify_key)])
+async def luanti_command(cmd: LuantiCommand):
+    """Send command to agent in Luanti."""
+    import json
+
+    valid_agents = ["river", "kasra", "foal"]
+    if cmd.agent not in valid_agents:
+        raise HTTPException(status_code=400, detail=f"Unknown agent: {cmd.agent}")
+
+    try:
+        # Read existing commands
+        commands = []
+        if LUANTI_COMMAND_FILE.exists():
+            try:
+                commands = json.loads(LUANTI_COMMAND_FILE.read_text())
+            except:
+                commands = []
+
+        # Add new command
+        new_cmd = {"agent": cmd.agent, "action": cmd.action}
+        if cmd.message:
+            new_cmd["message"] = cmd.message
+        commands.append(new_cmd)
+
+        # Write commands
+        LUANTI_COMMAND_FILE.write_text(json.dumps(commands))
+
+        return {
+            "success": True,
+            "agent": cmd.agent,
+            "action": cmd.action,
+            "message": cmd.message
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 def main():
     """Run SOS server."""
     logger.info("Starting SOS - Siavashgerd Operating System")

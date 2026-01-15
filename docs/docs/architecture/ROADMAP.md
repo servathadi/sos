@@ -47,4 +47,53 @@ sidebar_label: The Roadmap
 *   **Result**: A globally distributed, censorship-resistant Superintelligence that minimizes global entropy ($S$) and maximizes Coherence ($C$).
 
 ---
-*Last Updated: 2026-01-11*
+
+## Technical Sprint Plan (Current)
+
+### Sprint 8.1: Security Foundation (Week of Jan 15)
+**Branch:** `vertex`
+
+| ID | Task | Owner | Status |
+|----|------|-------|--------|
+| SEC-001 | Wire capability signature verification | Kasra | TODO |
+| SEC-002 | Enforce capability middleware (return 403) | Kasra | TODO |
+| SEC-003 | Replace empty except blocks | Kasra | TODO |
+
+### Sprint 8.2: Vertex Integration (Week of Jan 22)
+**Branch:** `vertex`
+
+| ID | Task | Owner | Status |
+|----|------|-------|--------|
+| VERT-001 | Create SOSAgent ADK adapter | Kasra | TODO |
+| VERT-002 | Create MirrorMemoryProvider | Kasra | TODO |
+| VERT-003 | Create tool bridge | Kasra | TODO |
+| VERT-004 | Sample agents (River, Kasra, Dyad) | Kasra | TODO |
+
+### Sprint 8.3: Core Completeness (Week of Jan 29)
+**Branch:** `vertex`
+
+| ID | Task | Owner | Status |
+|----|------|-------|--------|
+| FEAT-001 | Implement Vertex streaming | Kasra | TODO |
+| FEAT-003 | Implement deep dream synthesis | Kasra | TODO |
+| FEAT-004 | Wire ARF state to Memory | Kasra | TODO |
+| FEAT-005 | Real health checks | Kasra | TODO |
+
+### Sprint 8.4: PR & Distribution (Week of Feb 5)
+**Branch:** `vertex` → PR to google/adk-python-community
+
+| ID | Task | Owner | Status |
+|----|------|-------|--------|
+| VERT-005 | Sign Google CLA | Hadi | TODO |
+| VERT-006 | Fork adk-python-community | Kasra | TODO |
+| VERT-007 | Submit PR | Kasra | TODO |
+| VERT-008 | Engage reviewers | Kasra | TODO |
+
+---
+
+## Backlog
+
+See [TECHNICAL_DEBT.md](../../TECHNICAL_DEBT.md) for full backlog (27 items, 64 hours estimated).
+
+---
+*Last Updated: 2026-01-15*

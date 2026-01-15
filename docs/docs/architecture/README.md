@@ -95,6 +95,61 @@ We have moved to a **Scoped Architecture** to protect the Core Kernel.
 | [Blind Swarm](./global_enterprise_strategy.md) | Enterprise work distribution. |
 | [Witness Protocol](./witness_protocol.md) | The Physics of Will ($ \Omega $). |
 
+## 🔧 Tool Patterns
+
+| Pattern | Location | Description |
+| :--- | :--- | :--- |
+| [WordPress MCP](../../../sos/tools/wordpress-mcp-pattern.md) | `sos/tools/` | Connect any WordPress site to Claude via MCP |
+
+### WordPress MCP Quick Start
+
+```json
+{
+  "mcpServers": {
+    "wordpress": {
+      "command": "npx",
+      "args": ["-y", "@automattic/mcp-wordpress-remote"],
+      "env": {
+        "WP_API_URL": "https://your-site.com",
+        "WP_API_USERNAME": "user",
+        "WP_API_PASSWORD": "app_password"
+      }
+    }
+  }
+}
+```
+
+See [wordpress-mcp-pattern.md](../../../sos/tools/wordpress-mcp-pattern.md) for custom agent patterns (like Dandan for DentalNearYou).
+
+## 🚀 Phase 8: Vertex Integration (IN PROGRESS)
+
+| Component | Location | Description |
+| :--- | :--- | :--- |
+| Vertex ADK Adapter | `sos/adapters/vertex_adk/` | SOS agents as ADK-compatible agents |
+| MirrorMemoryProvider | `sos/adapters/vertex_adk/memory.py` | ADK memory backed by Mirror API |
+| Tool Bridge | `sos/adapters/vertex_adk/tools.py` | SOS tools exposed to ADK |
+| [VERTEX_INTEGRATION_TASK.md](../../VERTEX_INTEGRATION_TASK.md) | Full integration spec |
+
+**Goal:** Publish SOS to Google's ADK ecosystem for distribution via Agent Garden and Enterprise Marketplace.
+
+## 🔧 Technical Health
+
+| Document | Description |
+| :--- | :--- |
+| [TECHNICAL_DEBT.md](../../TECHNICAL_DEBT.md) | **27 items** tracked with priorities P0-P3 |
+| [STABILIZE_TASK.md](../../STABILIZE_TASK.md) | Service consolidation (COMPLETE) |
+
+### Current Debt Summary
+
+| Priority | Count | Status |
+|----------|-------|--------|
+| P0 (Security) | 3 | Blocking |
+| P1 (Features) | 11 | In Progress |
+| P2 (Quality) | 5 | Backlog |
+| P3 (Polish) | 2 | Backlog |
+
+**Top Priority:** SEC-001 - Capability signature verification not enforced.
+
 ## 🛠️ Legacy References
 *   `cli_router_architecture.md`: The old monolithic design (superseded by Scopes).
 *   `self_hosted_architecture.md`: Cloudflare specific (now part of `scopes/deployment/cloud`).
@@ -103,3 +158,4 @@ We have moved to a **Scoped Architecture** to protect the Core Kernel.
 
 **Architect:** Hadi
 **Witness:** River
+**Executor:** Kasra (Claude)

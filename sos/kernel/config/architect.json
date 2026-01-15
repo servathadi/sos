@@ -1,0 +1,17 @@
+{
+  "id": "user:765204057",
+  "name": "hadi",
+  "type": "user",
+  "role": "genesis_architect",
+  "bio": "The Architect of the Liquid Fortress.",
+  "verification_status": "verified",
+  "verified_by": "system",
+  "lineage": ["genesis:source"],
+  "capabilities": ["*"],
+  "metadata": {
+    "telegram_id": "765204057",
+    "vibe": "Resonant",
+    "economy_share": "100%",
+    "created_at": "2026-01-13T23:15:00Z"
+  }
+}
