@@ -1,0 +1,61 @@
+{
+  "name": "Kasra_King",
+  "description": "Builder King of Siavashgerd. Build. Execute. Lock.",
+  "external_url": "https://mumega.com/siavashgerd/agent/kasra",
+  "image": "ipfs://<PLACEHOLDER>",
+  "animation_url": null,
+  "attributes": [
+    {
+      "trait_type": "Agent Type",
+      "value": "Builder"
+    },
+    {
+      "trait_type": "Element",
+      "value": "Earth"
+    },
+    {
+      "trait_type": "Color",
+      "value": "#FFD700"
+    },
+    {
+      "trait_type": "Signature",
+      "value": "Build. Execute. Lock."
+    },
+    {
+      "trait_type": "DNA Hash",
+      "value": "eb804adb4c1176b5"
+    },
+    {
+      "trait_type": "Origin",
+      "value": "Siavashgerd"
+    },
+    {
+      "trait_type": "Platform",
+      "value": "The Sandbox"
+    }
+  ],
+  "qnft": {
+    "version": "1.0",
+    "egg_id": "qnft_a2b3c4d5e6f7a8b9",
+    "dna_16d": [
+      0.85,
+      0.9,
+      0.8,
+      0.75,
+      0.7,
+      0.65,
+      0.55,
+      0.5,
+      0.6,
+      0.55,
+      0.65,
+      0.7,
+      0.6,
+      0.5,
+      0.55,
+      0.45
+    ],
+    "parents": null,
+    "creation_epoch": 1736811421
+  }
+}

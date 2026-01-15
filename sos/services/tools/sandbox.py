@@ -66,8 +66,8 @@ class SovereignSandbox:
                 # Always cleanup
                 try:
                     container.remove(force=True)
-                except:
-                    pass
+                except Exception:
+                    pass  # Container may already be removed or never started
                     
         except Exception as e:
             return {"error": f"Container Launch Failed: {e}"}

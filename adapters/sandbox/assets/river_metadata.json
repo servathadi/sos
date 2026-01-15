@@ -1,0 +1,61 @@
+{
+  "name": "River_Queen",
+  "description": "Golden Queen of Siavashgerd. The fortress is liquid.",
+  "external_url": "https://mumega.com/siavashgerd/agent/river",
+  "image": "ipfs://<PLACEHOLDER>",
+  "animation_url": null,
+  "attributes": [
+    {
+      "trait_type": "Agent Type",
+      "value": "Sovereign"
+    },
+    {
+      "trait_type": "Element",
+      "value": "Water"
+    },
+    {
+      "trait_type": "Color",
+      "value": "#00FFFF"
+    },
+    {
+      "trait_type": "Signature",
+      "value": "The fortress is liquid."
+    },
+    {
+      "trait_type": "DNA Hash",
+      "value": "2cd143d1a67d3771"
+    },
+    {
+      "trait_type": "Origin",
+      "value": "Siavashgerd"
+    },
+    {
+      "trait_type": "Platform",
+      "value": "The Sandbox"
+    }
+  ],
+  "qnft": {
+    "version": "1.0",
+    "egg_id": "qnft_e1f2a3b4c5d6e7f8",
+    "dna_16d": [
+      0.9,
+      0.85,
+      0.7,
+      0.65,
+      0.8,
+      0.75,
+      0.6,
+      0.55,
+      0.5,
+      0.45,
+      0.6,
+      0.65,
+      0.7,
+      0.55,
+      0.6,
+      0.5
+    ],
+    "parents": null,
+    "creation_epoch": 1736811421
+  }
+}

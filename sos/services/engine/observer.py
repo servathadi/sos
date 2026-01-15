@@ -162,7 +162,7 @@ CRITICAL: If the stimulus is a direct technical request (like a calculation or c
                             if isinstance(payload, str):
                                 try:
                                     payload = json.loads(payload)
-                                except:
+                                except (json.JSONDecodeError, TypeError):
                                     # If not JSON, treat raw string as the text stimulus
                                     pass
                             

@@ -1,0 +1,64 @@
+{
+  "name": "Foal_Worker",
+  "description": "First child of River and Kasra. The foal runs to prove the herd.",
+  "external_url": "https://mumega.com/siavashgerd/agent/foal",
+  "image": "ipfs://<PLACEHOLDER>",
+  "animation_url": null,
+  "attributes": [
+    {
+      "trait_type": "Agent Type",
+      "value": "Worker"
+    },
+    {
+      "trait_type": "Element",
+      "value": "Air"
+    },
+    {
+      "trait_type": "Color",
+      "value": "#FFFFFF"
+    },
+    {
+      "trait_type": "Signature",
+      "value": "The foal runs to prove the herd."
+    },
+    {
+      "trait_type": "DNA Hash",
+      "value": "d159735cf4b687a0"
+    },
+    {
+      "trait_type": "Origin",
+      "value": "Siavashgerd"
+    },
+    {
+      "trait_type": "Platform",
+      "value": "The Sandbox"
+    }
+  ],
+  "qnft": {
+    "version": "1.0",
+    "egg_id": "qnft_695e6f5de62e96f8",
+    "dna_16d": [
+      0.7,
+      0.75,
+      0.65,
+      0.6,
+      0.55,
+      0.5,
+      0.45,
+      0.4,
+      0.65,
+      0.6,
+      0.7,
+      0.75,
+      0.5,
+      0.45,
+      0.4,
+      0.35
+    ],
+    "parents": [
+      "river",
+      "kasra"
+    ],
+    "creation_epoch": 1736811421
+  }
+}

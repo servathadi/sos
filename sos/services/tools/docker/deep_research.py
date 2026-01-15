@@ -158,7 +158,8 @@ class DeepResearchTool:
                     soup = BeautifulSoup(summary, 'html.parser')
                     return soup.get_text(separator='\n', strip=True)
                 return re.sub(r'<[^>]+>', '', summary)
-            except: pass
+            except Exception:
+                pass  # Readability extraction failed, try next method
 
         if BS4_AVAILABLE:
             try:
@@ -166,7 +167,8 @@ class DeepResearchTool:
                 for tag in soup(['script', 'style', 'nav', 'footer', 'header']):
                     tag.decompose()
                 return soup.get_text(separator='\n', strip=True)
-            except: pass
+            except Exception:
+                pass  # BeautifulSoup parsing failed, use regex fallback
 
         # Fallback
         return re.sub(r'<[^>]+>', ' ', html).strip()

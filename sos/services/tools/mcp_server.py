@@ -76,8 +76,8 @@ async def run_native_tool(script: str, args: List[str], env: Dict[str, str]) -> 
                 error_obj = json.loads(stdout_str)
                 if "error" in error_obj:
                     return error_obj
-            except:
-                pass
+            except (json.JSONDecodeError, TypeError):
+                pass  # stdout wasn't JSON, use stderr message instead
             return {"error": f"Tool execution failed: {stderr_str}"}
             
         log.debug(f"Tool {script} output: {stdout_str}")

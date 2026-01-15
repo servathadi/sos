@@ -126,8 +126,8 @@ class VertexAdapter(ModelAdapter):
 
     def get_model_id(self) -> str:
         # Ask accountant for the best model based on budget/time
-        # Override for user request: Gemini 3 Flash
-        return "gemini-3-flash-preview"
+        # Override for user request: Gemini 2.0 Flash (Experimental)
+        return "gemini-2.0-flash-exp"
 
     async def generate(
         self, 
@@ -142,8 +142,13 @@ class VertexAdapter(ModelAdapter):
         if not self.client:
             return "Error: Vertex AI not initialized"
 
-        # Strategy: Try Primary (Gemini 2.0 Flash) -> Fallback (Gemini 1.5 Flash GA)
-        models_to_try = ["gemini-2.0-flash-exp", "gemini-1.5-flash"]
+        # Strategy: Target Gemini 3 Flash specifically as requested
+        models_to_try = [
+            "gemini-3-flash-preview",
+            "gemini-experimental",
+            "gemini-2.0-flash-exp",
+            "gemini-1.5-flash"
+        ]
         
         for attempt, current_model_name in enumerate(models_to_try):
             try:
