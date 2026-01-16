@@ -11,7 +11,7 @@ Docs: https://developers.google.com/google-ads/api/docs/start
 """
 
 import os
-from datetime import date, datetime, timezone
+from datetime import date
 from typing import Optional, Dict, Any, List
 
 import httpx
@@ -183,7 +183,7 @@ class GoogleAdsAdapter(BaseMarketingAdapter):
         try:
             raw_data = await self.fetch_data(start_date, end_date)
             campaigns = self._parse_campaigns(raw_data)
-        except Exception as e:
+        except Exception:
             # Return empty data on error
             campaigns = []
 

@@ -13,9 +13,8 @@ This adapter provides what's available via API.
 Docs: https://docs.microsoft.com/en-us/clarity/
 """
 
-import os
-from datetime import date, datetime, timezone
-from typing import Optional, Dict, Any, List
+from datetime import date
+from typing import Optional, Dict, Any
 
 import httpx
 

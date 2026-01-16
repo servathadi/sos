@@ -5,7 +5,7 @@ Unified client for all marketing integrations.
 This is the main interface that SOS projects use.
 
 Usage:
-    from sos.services.marketing import MarketingClient
+    from sos.tools.marketing import MarketingClient
 
     client = MarketingClient(business_id="smile_dental")
 
@@ -20,12 +20,11 @@ Usage:
     insights = await client.analyze()
 """
 
-import os
 import json
 import uuid
-from datetime import date, datetime, timezone, timedelta
+from datetime import date, timedelta
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, List
 
 from .schemas import (
     MarketingAccount,
@@ -590,7 +589,7 @@ class MarketingClient:
                         business_id=self.business_id,
                         type=InsightType.ACTION,
                         priority=InsightPriority.MEDIUM,
-                        title=f"Paused Campaign With Conversions",
+                        title="Paused Campaign With Conversions",
                         description=f"'{campaign.name}' is paused but had {campaign.conversions} conversions",
                         recommendation="Consider resuming this campaign",
                         action_type="resume_campaign",

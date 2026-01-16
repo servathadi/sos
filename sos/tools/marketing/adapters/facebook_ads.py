@@ -11,7 +11,7 @@ Docs: https://developers.facebook.com/docs/marketing-api
 """
 
 import os
-from datetime import date, datetime, timezone
+from datetime import date
 from typing import Optional, Dict, Any, List
 
 import httpx

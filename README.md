@@ -104,7 +104,7 @@ See [AI_EMPLOYEE_ACTIVATION.md](./AI_EMPLOYEE_ACTIVATION.md) for activation guid
 Modular marketing integrations for any SOS-powered project:
 
 ```python
-from sos.services.marketing import MarketingClient
+from sos.tools.marketing import MarketingClient
 
 client = MarketingClient(business_id="my_business")
 await client.connect_google_analytics(property_id, token)

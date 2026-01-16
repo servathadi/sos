@@ -12,7 +12,7 @@ Supports:
 - Custom landing pages
 
 Usage:
-    from sos.services.marketing import MarketingClient
+    from sos.tools.marketing import MarketingClient
 
     client = MarketingClient(business_id="smile_dental")
     await client.connect_google(credentials)

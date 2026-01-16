@@ -7,16 +7,11 @@ Ensures consistent interface across platforms.
 
 from abc import ABC, abstractmethod
 from datetime import date, datetime, timezone
-from typing import Optional, Dict, Any, List
+from typing import Dict, Any, List
 
 from ..schemas import (
     MarketingAccount,
-    AnalyticsData,
-    AdsData,
-    SearchConsoleData,
-    ClarityData,
     Platform,
-    AccountType,
 )
 
 
