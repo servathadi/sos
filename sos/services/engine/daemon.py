@@ -179,6 +179,7 @@ class DreamSynthesizer:
 
 
 from sos.services.engine.observer import SwarmObserver
+from sos.services.engine.swarm import get_swarm
 from sos.adapters.telegram import start_telegram_adapter
 
 class SOSDaemon:
@@ -203,6 +204,12 @@ class SOSDaemon:
         self.dream_interval = int(os.getenv("SOS_DREAM_INTERVAL", "1800"))  # 30 min
         self.prune_interval = int(os.getenv("SOS_PRUNE_INTERVAL", "86400"))  # 24 hours
         self.idle_threshold = int(os.getenv("SOS_IDLE_THRESHOLD", "3600"))  # 1 hour
+        self.task_poll_interval = int(os.getenv("SOS_TASK_POLL_INTERVAL", "60"))  # 1 min
+        self.report_interval = int(os.getenv("SOS_REPORT_INTERVAL", "30"))  # 30 sec
+
+        # AI Employee settings
+        self.auto_claim_enabled = os.getenv("SOS_AUTO_CLAIM_ENABLED", "true").lower() == "true"
+        self.auto_execute_enabled = os.getenv("SOS_AUTO_EXECUTE_ENABLED", "true").lower() == "true"
 
         # Quiet hours (EST timezone)
         self.user_timezone = ZoneInfo(os.getenv("SOS_TIMEZONE", "America/Toronto"))
@@ -214,6 +221,10 @@ class SOSDaemon:
         self.dream_synthesizer = DreamSynthesizer()
         self.intent_router = IntentRouter()
         self.observer = SwarmObserver()
+        self.swarm = get_swarm()
+
+        # Telegram bot reference (set after start)
+        self._telegram_bot = None
 
         # State
         self.last_heartbeat: Optional[datetime] = None
@@ -620,6 +631,118 @@ class SOSDaemon:
                 log.error(f"Pulse loop error: {e}")
                 await asyncio.sleep(5) # Only sleep on error to prevent spin loop
 
+    async def task_claiming_loop(self):
+        """
+        Loop 6: Task Claiming - Poll pending tasks and submit to worker queue.
+
+        The AI Employee's work intake system.
+        """
+        log.info("Task claiming loop started")
+
+        while self.running:
+            try:
+                if not self.auto_claim_enabled:
+                    await asyncio.sleep(self.task_poll_interval)
+                    continue
+
+                # Get pending tasks
+                pending_tasks = await self.swarm.list_pending_tasks()
+
+                if pending_tasks:
+                    log.info(f"Found {len(pending_tasks)} pending tasks")
+
+                    for task in pending_tasks:
+                        task_id = task.get("id")
+                        if not task_id:
+                            continue
+
+                        # Claim the task
+                        claimed = await self.swarm.claim_task(task_id, worker_id="sos_daemon")
+                        if not claimed:
+                            continue
+
+                        log.info(f"Claimed task: {task_id} - {task.get('title', 'Untitled')}")
+
+                        # Submit to Redis queue for worker processing
+                        redis = await self._get_redis()
+                        if redis and self.auto_execute_enabled:
+                            await redis.xadd(
+                                "sos:queue:global",
+                                {
+                                    "type": "task_execute",
+                                    "payload": json.dumps(task),
+                                    "task_id": task_id
+                                }
+                            )
+                            log.info(f"Task {task_id} submitted to worker queue")
+
+            except Exception as e:
+                log.error(f"Task claiming error: {e}")
+
+            await asyncio.sleep(self.task_poll_interval)
+
+    async def reporting_loop(self):
+        """
+        Loop 7: Reporting - Notify user of completed tasks.
+
+        The AI Employee's work completion reporting system.
+        """
+        log.info("Reporting loop started")
+
+        while self.running:
+            try:
+                # Get completed but unreported tasks
+                unreported = await self.swarm.get_unreported_completed()
+
+                for task in unreported:
+                    task_id = task.get("id")
+                    title = task.get("title", "Untitled")
+                    result = task.get("result", {})
+
+                    # Format notification message
+                    output = result.get("output", "No output")
+                    if len(output) > 500:
+                        output = output[:500] + "..."
+
+                    message = (
+                        f"Task Completed: {title}\n\n"
+                        f"Result:\n{output}"
+                    )
+
+                    # Send via Telegram if available and not quiet hours
+                    if not self.is_quiet_hours():
+                        await self._send_notification(message)
+
+                    # Mark as reported
+                    await self.swarm.mark_reported(task_id)
+                    log.info(f"Reported task completion: {task_id}")
+
+            except Exception as e:
+                log.error(f"Reporting error: {e}")
+
+            await asyncio.sleep(self.report_interval)
+
+    async def _send_notification(self, message: str):
+        """Send notification to user via available channels."""
+        # Try Telegram
+        try:
+            from sos.adapters.telegram import get_telegram_bot
+            bot = get_telegram_bot()
+            if bot and hasattr(bot, 'send_notification'):
+                await bot.send_notification(message)
+                return
+        except Exception as e:
+            log.debug(f"Telegram notification failed: {e}")
+
+        # Fallback: publish to Redis for other subscribers
+        redis = await self._get_redis()
+        if redis:
+            await redis.publish("sos:notifications", json.dumps({
+                "type": "task_complete",
+                "message": message,
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }))
+
     async def run(self):
         """Run all daemon loops concurrently."""
         self.running = True
@@ -634,6 +757,8 @@ class SOSDaemon:
                 self.pulse_loop(),
                 self.dream_loop(),
                 self.maintenance_loop(),
+                self.task_claiming_loop(),    # Loop 6: AI Employee task intake
+                self.reporting_loop(),        # Loop 7: AI Employee result reporting
                 start_telegram_adapter()
             )
         except asyncio.CancelledError:

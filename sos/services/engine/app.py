@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import time
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse, PlainTextResponse, StreamingResponse
@@ -49,15 +49,21 @@ async def startup_event():
     import asyncio
     # Initialize River's Soul (Memory + Cache)
     await engine.initialize_soul()
-    
-    # Start SOSDaemon (Heartbeat, Dreams, Maintenance)
+
+    # Start SOSDaemon (Heartbeat, Dreams, Maintenance, Task Claiming, Reporting)
     from sos.services.engine.daemon import start_daemon
     await start_daemon()
 
+    # Start AsyncWorker for task execution (AI Employee muscle)
+    from sos.services.execution.worker import get_worker
+    worker = get_worker()
+    asyncio.create_task(worker.start())
+    log.info("AsyncWorker started for AI Employee task execution")
+
     # Start listening for signals on the Redis Bus
     asyncio.create_task(engine.listen_to_bus())
-    
-    log.info("🤖 Engine fully awake and listening to the Bus.")
+
+    log.info("Engine fully awake and listening to the Bus.")
 
 
 @app.websocket("/ws/nervous-system/{agent_id}")
@@ -141,6 +147,53 @@ async def list_tasks():
     swarm = get_swarm()
     tasks = await swarm.list_pending_tasks()
     return {"tasks": tasks}
+
+
+class TaskSubmission(BaseModel):
+    """Result submission for a completed task."""
+    success: bool
+    output: Optional[str] = None
+    error: Optional[str] = None
+    model: Optional[str] = None
+    provider: Optional[str] = None
+
+
+@app.post("/tasks/{task_id}/submit")
+async def submit_task_result(task_id: str, result: TaskSubmission):
+    """
+    Submit result for a claimed task.
+
+    Used by workers to report task completion.
+    """
+    swarm = get_swarm()
+    success = await swarm.submit_result(task_id, result.dict())
+
+    if success:
+        return {"status": "ok", "task_id": task_id}
+    else:
+        return JSONResponse(
+            status_code=404,
+            content={"detail": f"Task {task_id} not found or already completed"}
+        )
+
+
+@app.post("/tasks/{task_id}/claim")
+async def claim_task(task_id: str, worker_id: str = "api_worker"):
+    """
+    Claim a pending task for execution.
+
+    Used by external workers to claim tasks.
+    """
+    swarm = get_swarm()
+    success = await swarm.claim_task(task_id, worker_id)
+
+    if success:
+        return {"status": "claimed", "task_id": task_id, "worker_id": worker_id}
+    else:
+        return JSONResponse(
+            status_code=400,
+            content={"detail": f"Task {task_id} could not be claimed"}
+        )
 
 class ConnectRequest(BaseModel):
     action: str  # "publish" | "recall"

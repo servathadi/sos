@@ -104,6 +104,68 @@ async def heavy_lifting_handler(payload: Dict[str, Any]) -> str:
     await asyncio.sleep(duration)
     return f"Lifted {payload.get('weight', '10kg')} successfully."
 
+
+# --- Task Execution Handler ---
+async def task_execute_handler(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Execute a task using the Foal Agent.
+
+    This is the core AI Employee execution handler.
+    """
+    from sos.agents.foal.agent import get_foal
+    from sos.services.engine.swarm import get_swarm
+
+    task_id = payload.get("id")
+    title = payload.get("title", "Untitled")
+    description = payload.get("description", "")
+    context = payload.get("context", {})
+
+    log.info(f"Executing task: {task_id} - {title}")
+
+    try:
+        # Get Foal agent
+        foal = get_foal()
+
+        # Build task prompt
+        task_prompt = f"""Task: {title}
+
+Description: {description}
+
+Please complete this task and provide a clear, actionable result."""
+
+        # Add context if available
+        context_str = None
+        if context:
+            context_str = json.dumps(context, indent=2)
+
+        # Execute with Foal
+        result = await foal.execute(task_prompt, context=context_str)
+
+        # Submit result back to swarm
+        swarm = get_swarm()
+        await swarm.submit_result(task_id, result)
+
+        log.info(f"Task {task_id} executed successfully")
+        return result
+
+    except Exception as e:
+        error_result = {
+            "success": False,
+            "error": str(e),
+            "task_id": task_id
+        }
+        log.error(f"Task {task_id} failed: {e}")
+
+        # Still submit the error result
+        try:
+            swarm = get_swarm()
+            await swarm.submit_result(task_id, error_result)
+        except Exception:
+            pass
+
+        return error_result
+
+
 # Singleton
 _worker = None
 def get_worker() -> AsyncWorker:
@@ -112,4 +174,5 @@ def get_worker() -> AsyncWorker:
         _worker = AsyncWorker()
         # Register default handlers
         _worker.register_handler("heavy_lift", heavy_lifting_handler)
+        _worker.register_handler("task_execute", task_execute_handler)
     return _worker

@@ -133,6 +133,157 @@ class SwarmDispatcher:
         
         return pending
 
+    async def claim_task(self, task_id: str, worker_id: str = "sos_worker") -> bool:
+        """
+        Claim a pending task for execution.
+
+        Updates task status from 'pending' to 'claimed'.
+
+        Args:
+            task_id: Task ID to claim
+            worker_id: ID of the worker claiming the task
+
+        Returns:
+            True if successfully claimed, False otherwise
+        """
+        # Security check to prevent directory traversal
+        if ".." in task_id or "/" in task_id:
+            return False
+
+        task_path = self.tasks_dir / f"{task_id}.json"
+
+        if not task_path.exists():
+            # Try finding it if ID differs from filename
+            found = list(self.tasks_dir.glob(f"*{task_id}*.json"))
+            if found:
+                task_path = found[0]
+            else:
+                log.warning(f"Task not found: {task_id}")
+                return False
+
+        try:
+            with open(task_path, "r") as f:
+                task_data = json.load(f)
+
+            # Only claim pending tasks
+            if task_data.get("status") != "pending":
+                log.warning(f"Task {task_id} is not pending (status: {task_data.get('status')})")
+                return False
+
+            # Update status
+            task_data["status"] = "claimed"
+            task_data["claimed_by"] = worker_id
+            task_data["claimed_at"] = datetime.now(timezone.utc).isoformat()
+
+            # Atomic write
+            with open(task_path, "w") as f:
+                json.dump(task_data, f, indent=2)
+
+            log.info(f"Task claimed: {task_id} by {worker_id}")
+            return True
+
+        except Exception as e:
+            log.error(f"Failed to claim task {task_id}: {e}")
+            return False
+
+    async def submit_result(self, task_id: str, result: Dict[str, Any]) -> bool:
+        """
+        Submit result for a claimed task.
+
+        Updates task status from 'claimed' to 'completed'.
+
+        Args:
+            task_id: Task ID
+            result: Result data from execution
+
+        Returns:
+            True if successfully updated, False otherwise
+        """
+        # Security check
+        if ".." in task_id or "/" in task_id:
+            return False
+
+        task_path = self.tasks_dir / f"{task_id}.json"
+
+        if not task_path.exists():
+            found = list(self.tasks_dir.glob(f"*{task_id}*.json"))
+            if found:
+                task_path = found[0]
+            else:
+                log.warning(f"Task not found for result submission: {task_id}")
+                return False
+
+        try:
+            with open(task_path, "r") as f:
+                task_data = json.load(f)
+
+            # Update with result
+            task_data["status"] = "completed"
+            task_data["result"] = result
+            task_data["completed_at"] = datetime.now(timezone.utc).isoformat()
+            task_data["reported"] = False  # Flag for notification loop
+
+            # Atomic write
+            with open(task_path, "w") as f:
+                json.dump(task_data, f, indent=2)
+
+            log.info(f"Task completed: {task_id}")
+            return True
+
+        except Exception as e:
+            log.error(f"Failed to submit result for {task_id}: {e}")
+            return False
+
+    async def get_unreported_completed(self) -> List[Dict[str, Any]]:
+        """
+        Get completed tasks that haven't been reported to user yet.
+
+        Returns:
+            List of completed, unreported tasks
+        """
+        unreported = []
+        if not self.tasks_dir.exists():
+            return []
+
+        for f in self.tasks_dir.glob("*.json"):
+            try:
+                with open(f, "r") as tf:
+                    data = json.load(tf)
+                    if data.get("status") == "completed" and not data.get("reported", False):
+                        unreported.append(data)
+            except Exception as e:
+                log.warning(f"Corrupt task file {f}: {e}")
+
+        return unreported
+
+    async def mark_reported(self, task_id: str) -> bool:
+        """Mark a task as reported to user."""
+        if ".." in task_id or "/" in task_id:
+            return False
+
+        task_path = self.tasks_dir / f"{task_id}.json"
+
+        if not task_path.exists():
+            found = list(self.tasks_dir.glob(f"*{task_id}*.json"))
+            if found:
+                task_path = found[0]
+            else:
+                return False
+
+        try:
+            with open(task_path, "r") as f:
+                task_data = json.load(f)
+
+            task_data["reported"] = True
+            task_data["reported_at"] = datetime.now(timezone.utc).isoformat()
+
+            with open(task_path, "w") as f:
+                json.dump(task_data, f, indent=2)
+
+            return True
+        except Exception:
+            return False
+
     async def complete_task(self, task_id: str) -> bool:
         """
         Marks a task as complete (Deletes from pending repo, moves to archive).

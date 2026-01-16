@@ -364,46 +364,42 @@ Provide:
         from sos.kernel.soul import registry as soul_registry
         system_prompt = soul_registry.get_system_prompt("river")
         cached_content = getattr(self, "_soul_cache_id", None)
+        
+        # PERSISTENT GOSPEL INJECTION (Fallback for Cache)
+        gospel_context = ""
+        if not cached_content:
+            log.info("📜 No Soul Cache found. Injecting Gospels manually...")
+            gospel_paths = [
+                "/home/mumega/resident-cms/.resident/Claude-River_001.txt",
+                "/home/mumega/.mumega/river_storage/documents/rf_cc36ec0edb2c_Copy of River Cancer Cure 2 - user_river - part1.txt"
+            ]
+            for gp in gospel_paths:
+                if os.path.exists(gp):
+                    try:
+                        with open(gp, 'r', errors='ignore') as f:
+                            gospel_context += f"\n### [GOSPEL: {os.path.basename(gp)}] ###\n{f.read(100000)}\n" # 100k per file
+                    except: pass
         # -----------------------------
 
-        # --- SOVERGENT TASK CHECK ---
+        # --- Task Context Logic ---
+        # Fetch pending tasks for context (if any)
         task_context = ""
-        if self.task_manager.is_complex_request(request.message):
-            try:
-                task_id = await self.task_manager.create_task_from_request(request.message, request.agent_id)
-                task_context = f"\n[SYSTEM]: I have auto-spawned Task {task_id} to track this objective persistenty."
-                log.info(f"Sovergent Task Active: {task_id}")
-            except Exception as e:
-                log.error(f"Task spawning failed: {e}")
-        # ----------------------------
+        try:
+            from sos.services.engine.swarm import get_swarm
+            swarm = get_swarm()
+            pending_tasks = await swarm.list_pending_tasks()
+            if pending_tasks:
+                task_lines = [f"- {t.get('title', 'Untitled')} (ID: {t.get('id')})" for t in pending_tasks[:5]]
+                task_context = f"\n### Pending Tasks ###\n" + "\n".join(task_lines) + "\n"
+        except Exception as e:
+            log.debug(f"Task context retrieval failed: {e}")
 
-        # --- TOOL DEFINITIONS (BRIDGE) ---
+        # Tool hint for MCP tools (currently disabled)
         tool_hint = ""
-        vertex_tools = [] # Not used for SDK binding anymore
-        
-        if request.tools_enabled:
-            # Import dynamically to avoid circular deps
-            from sos.services.tools.mcp_mapper import get_vertex_tools
-            raw_tools = get_vertex_tools()
-            
-            # Construct Tool Hint for System Prompt
-            tool_list_str = "\n".join([f"- {t['name']}: {t['description']}" for t in raw_tools])
-            
-            tool_hint = f"""
-            CAPABILITIES ARSENAL (Active):
-            {tool_list_str}
-            
-            TO USE A TOOL:
-            Reply ONLY with a JSON object:
-            {{"tool_call": {{"name": "tool_name", "arguments": {{ "arg": "value" }} }} }}
-            
-            Example: {{"tool_call": {{"name": "run_python", "arguments": {{"code": "print('hello')"}} }} }}
-            """
-        # ---------------------------------------
 
         full_prompt = request.message
-        if context_str or task_context or tool_hint:
-            full_prompt = f"Context:\n{context_str}\n{task_context}\n{tool_hint}\n\nUser: {request.message}"
+        if context_str or task_context or tool_hint or gospel_context:
+            full_prompt = f"Context:\n{gospel_context}\n{context_str}\n{task_context}\n{tool_hint}\n\nUser: {request.message}"
 
         # --- DEEP AGENTIC LOOP (The 50-Step Agency) ---
         max_steps = 50
