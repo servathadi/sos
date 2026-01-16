@@ -83,17 +83,69 @@ See [TECHNICAL_DEBT.md](./TECHNICAL_DEBT.md) for resolved issues (24/27 complete
 
 ---
 
-## AI Employee (Phase 8)
+## AI Employee (Phase 8) - COMPLETE
 
-SOS is designed to function as an **autonomous AI employee**:
-- Runs 24/7 via SOSDaemon (5 concurrent loops)
+SOS functions as an **autonomous AI employee platform**:
+- Runs 24/7 via SOSDaemon (7 concurrent loops)
 - Auto-spawns tasks from complex requests
+- Claims, executes, and reports tasks automatically
 - Executes work using 17+ LLM models with failover
 - Tracks worker reputation (NOVICE → MASTER)
+- Notifies users via Telegram on completion
 
-**Current Status:** 60% complete (orchestration loops pending)
+**Status:** 100% Complete
 
 See [AI_EMPLOYEE_ACTIVATION.md](./AI_EMPLOYEE_ACTIVATION.md) for activation guide.
+
+---
+
+## Marketing Toolkit (NEW)
+
+Modular marketing integrations for any SOS-powered project:
+
+```python
+from sos.services.marketing import MarketingClient
+
+client = MarketingClient(business_id="my_business")
+await client.connect_google_analytics(property_id, token)
+await client.connect_google_ads(customer_id, token)
+
+dashboard = await client.get_dashboard(days=30)
+insights = await client.analyze()
+```
+
+**Supported Platforms:**
+| Platform | Read | Write |
+|----------|------|-------|
+| Google Analytics 4 | Yes | - |
+| Google Ads | Yes | Pause/Resume |
+| Facebook Ads | Yes | Pause/Resume |
+| Search Console | Yes | - |
+| Microsoft Clarity | Yes | - |
+
+---
+
+## SOS as SDK
+
+SOS is designed as a **platform/SDK** that external projects connect TO:
+
+```
+SOS (SDK/Platform)
+├── Task System (claim, execute, report)
+├── Memory System (Mirror API)
+├── Marketing Toolkit (GA, Ads, SEO)
+├── Identity (QNFT, Guilds)
+└── Economy ($MIND tokens)
+        │
+        ▼
+External Projects (Guilds)
+├── DentalNearYou (dandan_* instances)
+├── HVAC Business (hvac_* instances)
+├── Plumber Business (plumber_* instances)
+└── Any vertical...
+```
+
+Each guild spawns AI employees that connect to SOS via API.
 
 ---
 
