@@ -10,6 +10,7 @@ class ChatRequest:
     tools_enabled: bool = False
     memory_enabled: bool = True
     witness_enabled: bool = False  # Added for Witness Protocol
+    stream: bool = False  # Added to fix 500 error
 
 @dataclass
 class ChatResponse:

@@ -510,7 +510,8 @@ Provide:
             model_used=model_id,
             conversation_id=request.conversation_id or "new",
             tool_calls=tool_calls,
-            tokens_used=10
+            tokens_used=10,
+            metadata=witness_meta
         )
 
     async def _consolidate_memory(self, user_msg: str, agent_msg: str, agent_id: str):

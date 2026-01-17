@@ -10,7 +10,7 @@ import os
 import uvicorn
 
 if __name__ == "__main__":
-    port = int(os.getenv("SOS_CONTENT_PORT", "8020"))
+    port = int(os.getenv("SOS_CONTENT_PORT", "6064"))
     host = os.getenv("SOS_CONTENT_HOST", "127.0.0.1")
 
     uvicorn.run(

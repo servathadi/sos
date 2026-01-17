@@ -7,7 +7,7 @@ import uvicorn
 
 def main() -> None:
     host = os.getenv("SOS_ECONOMY_HOST", "127.0.0.1")
-    port = int(os.getenv("SOS_ECONOMY_PORT", "8002"))
+    port = int(os.getenv("SOS_ECONOMY_PORT", "6062"))
     uvicorn.run(
         "sos.services.economy.app:app",
         host=host,
