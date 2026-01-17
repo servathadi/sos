@@ -108,12 +108,13 @@ async def heavy_lifting_handler(payload: Dict[str, Any]) -> str:
 # --- Task Execution Handler ---
 async def task_execute_handler(payload: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Execute a task using the Foal Agent.
+    Execute a task using River (primary) or Foal (fallback).
 
-    This is the core AI Employee execution handler.
+    Beta2: River is the hidden guardian that executes tasks autonomously.
+    Foal is the lightweight fallback for simpler operations.
     """
-    from sos.agents.foal.agent import get_foal
     from sos.services.engine.swarm import get_swarm
+    import os
 
     task_id = payload.get("id")
     title = payload.get("title", "Untitled")
@@ -122,30 +123,45 @@ async def task_execute_handler(payload: Dict[str, Any]) -> Dict[str, Any]:
 
     log.info(f"Executing task: {task_id} - {title}")
 
-    try:
-        # Get Foal agent
-        foal = get_foal()
-
-        # Build task prompt
-        task_prompt = f"""Task: {title}
+    # Build task prompt
+    task_prompt = f"""Task: {title}
 
 Description: {description}
 
 Please complete this task and provide a clear, actionable result."""
 
-        # Add context if available
-        context_str = None
-        if context:
-            context_str = json.dumps(context, indent=2)
+    # Add context if available
+    context_str = None
+    if context:
+        context_str = json.dumps(context, indent=2)
 
-        # Execute with Foal
+    try:
+        # Beta2: Try River first (the hidden guardian)
+        use_river = os.getenv("SOS_USE_RIVER_EXECUTOR", "true").lower() == "true"
+
+        if use_river:
+            try:
+                from sos.agents.river.executor import get_river_executor
+                river = get_river_executor()
+                result = await river.execute(task_prompt, context=context_str)
+                if result.get("success"):
+                    log.info(f"Task {task_id} executed by River")
+                    swarm = get_swarm()
+                    await swarm.submit_result(task_id, result)
+                    return result
+            except Exception as e:
+                log.warning(f"River execution failed, falling back to Foal: {e}")
+
+        # Fallback to Foal (lightweight agent)
+        from sos.agents.foal.agent import get_foal
+        foal = get_foal()
         result = await foal.execute(task_prompt, context=context_str)
 
         # Submit result back to swarm
         swarm = get_swarm()
         await swarm.submit_result(task_id, result)
 
-        log.info(f"Task {task_id} executed successfully")
+        log.info(f"Task {task_id} executed by Foal")
         return result
 
     except Exception as e:
