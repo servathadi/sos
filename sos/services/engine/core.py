@@ -50,7 +50,8 @@ class SOSEngine(EngineContract):
             "grok-3": GrokAdapter(model="grok-3"),
             "grok-3-mini": GrokAdapter(model="grok-3-mini"),
         }
-        self.default_model = "vertex-auto"
+        # Beta2: Default to rotator-based adapter (Vertex credits exhausted)
+        self.default_model = "gemini-flash-preview"
         
         self.running = True
         self.is_dreaming = False

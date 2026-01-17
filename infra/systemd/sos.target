@@ -1,0 +1,8 @@
+[Unit]
+Description=SOS - Sovereign Operating System (Beta2)
+Documentation=https://github.com/servathadi/sos
+After=network.target
+Wants=sos-engine.service sos-memory.service sos-tools.service sos-economy.service
+
+[Install]
+WantedBy=multi-user.target

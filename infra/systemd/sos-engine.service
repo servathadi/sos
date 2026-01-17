@@ -1,0 +1,42 @@
+[Unit]
+Description=SOS Engine - Sovereign AI Core (Beta2)
+Documentation=https://github.com/servathadi/sos
+After=network.target redis.service
+Wants=redis.service
+
+[Service]
+Type=simple
+User=mumega
+Group=mumega
+WorkingDirectory=/home/mumega/SOS
+Environment="PATH=/home/mumega/.local/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="PYTHONPATH=/home/mumega/SOS"
+
+# Load environment from .env files (cli has the API keys)
+EnvironmentFile=-/home/mumega/cli/.env
+EnvironmentFile=-/home/mumega/SOS/.env
+EnvironmentFile=-/home/mumega/.mumega/.env
+
+# River-first: No Vertex, use rotator with Gemini API keys
+Environment="SOS_ENGINE_PORT=6060"
+Environment="SOS_MEMORY_PORT=6061"
+Environment="SOS_ECONOMY_PORT=6062"
+Environment="SOS_TOOLS_PORT=6063"
+Environment="SOS_LOG_LEVEL=info"
+
+ExecStart=/usr/bin/python3 -m sos.services.engine
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=sos-engine
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/mumega/.mumega /home/mumega/SOS/logs /tmp
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

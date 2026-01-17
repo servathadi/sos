@@ -1,0 +1,34 @@
+[Unit]
+Description=SOS Memory Service - Sovereign Memory Layer (Beta2)
+Documentation=https://github.com/servathadi/sos
+After=network.target
+
+[Service]
+Type=simple
+User=mumega
+Group=mumega
+WorkingDirectory=/home/mumega/SOS
+Environment="PATH=/home/mumega/.local/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="PYTHONPATH=/home/mumega/SOS"
+
+EnvironmentFile=-/home/mumega/SOS/.env
+EnvironmentFile=-/home/mumega/.mumega/.env
+
+Environment="SOS_MEMORY_PORT=6061"
+Environment="SOS_LOG_LEVEL=info"
+
+ExecStart=/usr/bin/python3 -m sos.services.memory
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=sos-memory
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/mumega/.mumega /tmp
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
