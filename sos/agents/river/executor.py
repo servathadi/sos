@@ -135,7 +135,7 @@ Execute the following task:"""
         import google.generativeai as genai
 
         genai.configure(api_key=self.gemini_key)
-        model = genai.GenerativeModel("gemini-2.0-flash")
+        model = genai.GenerativeModel("gemini-3-flash-preview")
 
         response = await asyncio.to_thread(
             model.generate_content,
@@ -146,7 +146,7 @@ Execute the following task:"""
             "success": True,
             "output": response.text,
             "provider": "gemini",
-            "model": "gemini-2.0-flash",
+            "model": "gemini-3-flash-preview",
             "executor": "river"
         }
 
