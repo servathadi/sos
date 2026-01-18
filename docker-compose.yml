@@ -111,6 +111,25 @@ services:
     networks:
       - sos-net
 
+  sos-voice:
+    build:
+      context: .
+      dockerfile: sos/services/voice/Dockerfile
+    container_name: sos-voice
+    env_file:
+      - .env
+    environment:
+      - SOS_REDIS_URL=redis://redis:6379/0
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    ports:
+      - "6065:6065"
+    volumes:
+      - ./data/voice:/app/data
+    networks:
+      - sos-net
+
   # --- ASYNC WORKERS ---
 
   sos-worker:

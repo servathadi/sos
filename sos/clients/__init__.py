@@ -5,6 +5,7 @@ from sos.clients.engine import EngineClient
 from sos.clients.memory import MemoryClient
 from sos.clients.economy import EconomyClient
 from sos.clients.tools import ToolsClient
+from sos.clients.voice import VoiceClient
 
 __all__ = [
     "SOSClientError",
@@ -12,5 +13,6 @@ __all__ = [
     "MemoryClient",
     "EconomyClient",
     "ToolsClient",
+    "VoiceClient",
 ]
 
