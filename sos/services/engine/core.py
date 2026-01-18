@@ -21,6 +21,10 @@ log = get_logger("engine_core")
 from sos.services.engine.adapters import (
     MockAdapter,
     GeminiAdapter,
+    LocalAdapter,
+    LocalCodeAdapter,
+    LocalReasoningAdapter,
+    # Backward compatibility aliases
     MLXAdapter,
     MLXCodeAdapter,
     MLXReasoningAdapter,
@@ -44,17 +48,17 @@ class SOSEngine(EngineContract):
             # Cloud Models
             "sos-mock-v1": MockAdapter(),
             "gemini-3-flash-preview": GeminiAdapter(),
-            # Sovereign Local Models (MLX - Apple Silicon)
-            "mlx-local": MLXAdapter(),
-            "mlx-devstral-code": MLXCodeAdapter(),
-            "mlx-qwen3-reasoning": MLXReasoningAdapter(),
+            # Sovereign Local Models (LM Studio, MLX, Ollama - any OpenAI-compatible server)
+            "local": LocalAdapter(),
+            "local-code": LocalCodeAdapter(),
+            "local-reasoning": LocalReasoningAdapter(),
         }
         self.default_model = "gemini-3-flash-preview"
 
         # Fallback chain: try cloud first, fall back to local if rate-limited
         self.fallback_chain = [
             "gemini-3-flash-preview",
-            "mlx-local",
+            "local",
             "sos-mock-v1"
         ]
         
@@ -297,18 +301,24 @@ class SOSEngine(EngineContract):
         return await self.tools.execute(request)
 
     async def get_models(self) -> List[Dict[str, Any]]:
-        # Check MLX availability
-        mlx_adapter = self.models.get("mlx-local")
-        mlx_status = "active" if (mlx_adapter and await mlx_adapter.is_available()) else "offline"
+        # Check local server availability (LM Studio, MLX, Ollama, etc.)
+        local_adapter = self.models.get("local")
+        local_status = "offline"
+        local_server_type = "Local"
+
+        if local_adapter:
+            is_available = await local_adapter.is_available()
+            local_status = "active" if is_available else "offline"
+            local_server_type = local_adapter.server_type
 
         return [
             # Cloud Models
             {"id": "sos-mock-v1", "name": "SOS Mock Model", "status": "active", "type": "mock"},
             {"id": "gemini-3-flash-preview", "name": "Gemini 3 Flash", "status": "active", "type": "cloud"},
-            # Sovereign Local Models (MLX)
-            {"id": "mlx-local", "name": "MLX Local (Devstral)", "status": mlx_status, "type": "sovereign"},
-            {"id": "mlx-devstral-code", "name": "MLX Devstral Code", "status": mlx_status, "type": "sovereign"},
-            {"id": "mlx-qwen3-reasoning", "name": "MLX Qwen3 Reasoning", "status": mlx_status, "type": "sovereign"},
+            # Sovereign Local Models (LM Studio, MLX, Ollama)
+            {"id": "local", "name": f"{local_server_type} Local", "status": local_status, "type": "sovereign"},
+            {"id": "local-code", "name": f"{local_server_type} Code", "status": local_status, "type": "sovereign"},
+            {"id": "local-reasoning", "name": f"{local_server_type} Reasoning", "status": local_status, "type": "sovereign"},
         ]
 
     async def resolve_witness(self, agent_id: str, conversation_id: str, vote: int = 1):

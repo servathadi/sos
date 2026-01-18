@@ -7,9 +7,20 @@ import json
 
 log = logging.getLogger("model_adapter")
 
-# MLX Server Configuration
-MLX_SERVER_URL = os.getenv("MLX_SERVER_URL", "http://localhost:8080")
-MLX_DEFAULT_MODEL = os.getenv("MLX_DEFAULT_MODEL", "mlx-community/Devstral-Small-2507-4bit")
+# Local Server Configuration (supports MLX, LM Studio, Ollama, or any OpenAI-compatible server)
+# Common ports: MLX=8080, LM Studio=1234, Ollama=11434
+LOCAL_SERVER_URL = os.getenv("LOCAL_SERVER_URL", os.getenv("MLX_SERVER_URL", "http://localhost:1234"))
+LOCAL_DEFAULT_MODEL = os.getenv("LOCAL_DEFAULT_MODEL", os.getenv("MLX_DEFAULT_MODEL", "default"))
+
+# Auto-detect server type from URL for logging
+def _detect_server_type(url: str) -> str:
+    if ":8080" in url:
+        return "MLX"
+    elif ":1234" in url:
+        return "LM Studio"
+    elif ":11434" in url:
+        return "Ollama"
+    return "Local"
 
 class ModelAdapter(ABC):
     """
@@ -112,22 +123,31 @@ class MockAdapter(ModelAdapter):
         yield "Response"
 
 
-class MLXAdapter(ModelAdapter):
+class LocalAdapter(ModelAdapter):
     """
-    Sovereign Local Adapter via MLX (Apple Silicon).
+    Sovereign Local Adapter for any OpenAI-compatible server.
 
-    Runs inference locally on macOS Tahoe 26.2+ using MLX framework.
-    Connects to mlx_lm.server running at localhost:8080 (OpenAI-compatible API).
+    Works with:
+    - LM Studio (default, port 1234)
+    - MLX (mlx_lm.server, port 8080)
+    - Ollama (port 11434)
+    - Any OpenAI-compatible local server
 
     Benefits:
     - Zero API cost
     - True data sovereignty (nothing leaves device)
     - Offline capability
     - Predictable latency for Witness Protocol
+    - Cross-platform (LM Studio works on Mac, Windows, Linux)
 
     Usage:
-        # Start MLX server first:
-        mlx_lm.server --model mlx-community/Devstral-Small-2507-4bit --port 8080
+        # LM Studio (default): Just start LM Studio and load a model
+        # MLX: mlx_lm.server --model mlx-community/Devstral-Small-2507-4bit --port 8080
+        # Ollama: ollama serve
+
+    Environment:
+        LOCAL_SERVER_URL=http://localhost:1234  (or 8080 for MLX, 11434 for Ollama)
+        LOCAL_DEFAULT_MODEL=default  (or specific model name)
     """
 
     def __init__(
@@ -136,16 +156,18 @@ class MLXAdapter(ModelAdapter):
         server_url: str = None,
         timeout: float = 120.0
     ):
-        self.model_id = model_id or MLX_DEFAULT_MODEL
-        self.server_url = server_url or MLX_SERVER_URL
+        self.model_id = model_id or LOCAL_DEFAULT_MODEL
+        self.server_url = server_url or LOCAL_SERVER_URL
+        self.server_type = _detect_server_type(self.server_url)
         self.timeout = timeout
         self._available = None  # Cached availability check
+        self._available_models = []  # Cache available models
 
     def get_model_id(self) -> str:
         return self.model_id
 
     async def is_available(self) -> bool:
-        """Check if MLX server is running and responsive."""
+        """Check if local server is running and responsive."""
         if self._available is not None:
             return self._available
 
@@ -154,13 +176,20 @@ class MLXAdapter(ModelAdapter):
                 resp = await client.get(f"{self.server_url}/v1/models")
                 self._available = resp.status_code == 200
                 if self._available:
-                    models = resp.json().get("data", [])
-                    log.info(f"MLX Server connected. Available models: {[m['id'] for m in models]}")
+                    self._available_models = resp.json().get("data", [])
+                    model_ids = [m.get('id', 'unknown') for m in self._available_models]
+                    log.info(f"{self.server_type} Server connected. Available models: {model_ids}")
                 return self._available
         except Exception as e:
-            log.warn(f"MLX Server not available: {e}")
+            log.warn(f"{self.server_type} Server not available at {self.server_url}: {e}")
             self._available = False
             return False
+
+    def _get_effective_model(self) -> str:
+        """Get the model to use - auto-select first available if 'default'."""
+        if self.model_id == "default" and self._available_models:
+            return self._available_models[0].get("id", "default")
+        return self.model_id
 
     async def generate(
         self,
@@ -169,23 +198,25 @@ class MLXAdapter(ModelAdapter):
         tools: List[Dict] = None
     ) -> str:
         """
-        Generate response via local MLX server.
+        Generate response via local server.
         Falls back gracefully if server unavailable.
         """
         if not await self.is_available():
-            return "[MLX Offline] Local model server not running. Start with: mlx_lm.server --model mlx-community/Devstral-Small-2507-4bit"
+            return f"[{self.server_type} Offline] Local server not running at {self.server_url}. Start LM Studio, MLX server, or Ollama."
 
         messages = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
 
+        effective_model = self._get_effective_model()
+
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 resp = await client.post(
                     f"{self.server_url}/v1/chat/completions",
                     json={
-                        "model": self.model_id,
+                        "model": effective_model,
                         "messages": messages,
                         "max_tokens": 2048,
                         "temperature": 0.7
@@ -193,8 +224,8 @@ class MLXAdapter(ModelAdapter):
                 )
 
                 if resp.status_code != 200:
-                    log.error(f"MLX generation failed: {resp.status_code} - {resp.text}")
-                    return f"[MLX Error] {resp.status_code}"
+                    log.error(f"{self.server_type} generation failed: {resp.status_code} - {resp.text}")
+                    return f"[{self.server_type} Error] {resp.status_code}"
 
                 data = resp.json()
                 content = data["choices"][0]["message"]["content"]
@@ -202,8 +233,8 @@ class MLXAdapter(ModelAdapter):
                 # Log token usage for monitoring
                 usage = data.get("usage", {})
                 log.info(
-                    f"MLX Generation complete",
-                    model=self.model_id,
+                    f"{self.server_type} Generation complete",
+                    model=effective_model,
                     prompt_tokens=usage.get("prompt_tokens"),
                     completion_tokens=usage.get("completion_tokens")
                 )
@@ -211,11 +242,11 @@ class MLXAdapter(ModelAdapter):
                 return content
 
         except httpx.TimeoutException:
-            log.error(f"MLX generation timed out after {self.timeout}s")
-            return "[MLX Timeout] Local model took too long. Try a smaller model."
+            log.error(f"{self.server_type} generation timed out after {self.timeout}s")
+            return f"[{self.server_type} Timeout] Local model took too long. Try a smaller model."
         except Exception as e:
-            log.error(f"MLX generation failed: {e}")
-            return f"[MLX Error] {str(e)}"
+            log.error(f"{self.server_type} generation failed: {e}")
+            return f"[{self.server_type} Error] {str(e)}"
 
     async def generate_stream(
         self,
@@ -223,10 +254,10 @@ class MLXAdapter(ModelAdapter):
         system_prompt: str = None
     ) -> AsyncIterator[str]:
         """
-        Stream tokens from local MLX server via SSE.
+        Stream tokens from local server via SSE.
         """
         if not await self.is_available():
-            yield "[MLX Offline] Server not running."
+            yield f"[{self.server_type} Offline] Server not running."
             return
 
         messages = []
@@ -234,13 +265,15 @@ class MLXAdapter(ModelAdapter):
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
 
+        effective_model = self._get_effective_model()
+
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 async with client.stream(
                     "POST",
                     f"{self.server_url}/v1/chat/completions",
                     json={
-                        "model": self.model_id,
+                        "model": effective_model,
                         "messages": messages,
                         "max_tokens": 2048,
                         "temperature": 0.7,
@@ -262,25 +295,30 @@ class MLXAdapter(ModelAdapter):
                                 continue
 
         except Exception as e:
-            log.error(f"MLX stream failed: {e}")
-            yield f"[MLX Error] {str(e)}"
+            log.error(f"{self.server_type} stream failed: {e}")
+            yield f"[{self.server_type} Error] {str(e)}"
 
 
-class MLXCodeAdapter(MLXAdapter):
+# Backward compatibility alias
+MLXAdapter = LocalAdapter
+
+
+class LocalCodeAdapter(LocalAdapter):
     """
-    Specialized MLX adapter for coding tasks using Devstral.
+    Specialized local adapter for coding tasks.
+    Works with any loaded coding model (Devstral, CodeLlama, DeepSeek Coder, etc.)
     Optimized prompts for code generation, review, and debugging.
     """
 
-    def __init__(self, server_url: str = None):
+    def __init__(self, server_url: str = None, model_id: str = None):
         super().__init__(
-            model_id="mlx-community/Devstral-Small-2507-4bit",
+            model_id=model_id or "default",  # Use whatever model is loaded
             server_url=server_url,
             timeout=180.0  # Longer timeout for code generation
         )
 
     def get_model_id(self) -> str:
-        return "mlx-devstral-code"
+        return "local-code"
 
     async def generate(
         self,
@@ -290,7 +328,7 @@ class MLXCodeAdapter(MLXAdapter):
     ) -> str:
         # Inject coding-optimized system prompt
         code_system = system_prompt or ""
-        code_system = f"""You are Devstral, a sovereign coding assistant running locally on Apple Silicon.
+        code_system = f"""You are a sovereign coding assistant running locally.
 You excel at: code generation, debugging, refactoring, and multi-file edits.
 Be concise. Output code directly without excessive explanation.
 {code_system}"""
@@ -298,21 +336,22 @@ Be concise. Output code directly without excessive explanation.
         return await super().generate(prompt, code_system, tools)
 
 
-class MLXReasoningAdapter(MLXAdapter):
+class LocalReasoningAdapter(LocalAdapter):
     """
-    Specialized MLX adapter for reasoning tasks using Qwen3.
+    Specialized local adapter for reasoning tasks.
+    Works with any loaded reasoning model (Qwen, Llama, Mistral, etc.)
     Supports thinking mode for step-by-step reasoning.
     """
 
-    def __init__(self, server_url: str = None):
+    def __init__(self, server_url: str = None, model_id: str = None):
         super().__init__(
-            model_id="mlx-community/Qwen3-14B-4bit",
+            model_id=model_id or "default",
             server_url=server_url,
             timeout=180.0
         )
 
     def get_model_id(self) -> str:
-        return "mlx-qwen3-reasoning"
+        return "local-reasoning"
 
     async def generate(
         self,
@@ -323,3 +362,8 @@ class MLXReasoningAdapter(MLXAdapter):
         # Trigger thinking mode
         reasoning_prompt = f"{prompt}\n\nThink step by step."
         return await super().generate(reasoning_prompt, system_prompt, tools)
+
+
+# Backward compatibility aliases
+MLXCodeAdapter = LocalCodeAdapter
+MLXReasoningAdapter = LocalReasoningAdapter
