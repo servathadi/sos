@@ -18,7 +18,13 @@ from sos.observability.logging import get_logger
 log = get_logger("engine_core")
 
 
-from sos.services.engine.adapters import MockAdapter, GeminiAdapter
+from sos.services.engine.adapters import (
+    MockAdapter,
+    GeminiAdapter,
+    MLXAdapter,
+    MLXCodeAdapter,
+    MLXReasoningAdapter,
+)
 
 class SOSEngine(EngineContract):
     """
@@ -35,10 +41,22 @@ class SOSEngine(EngineContract):
         
         # Initialize Model Adapters
         self.models = {
+            # Cloud Models
             "sos-mock-v1": MockAdapter(),
             "gemini-3-flash-preview": GeminiAdapter(),
+            # Sovereign Local Models (MLX - Apple Silicon)
+            "mlx-local": MLXAdapter(),
+            "mlx-devstral-code": MLXCodeAdapter(),
+            "mlx-qwen3-reasoning": MLXReasoningAdapter(),
         }
         self.default_model = "gemini-3-flash-preview"
+
+        # Fallback chain: try cloud first, fall back to local if rate-limited
+        self.fallback_chain = [
+            "gemini-3-flash-preview",
+            "mlx-local",
+            "sos-mock-v1"
+        ]
         
         log.info("SOSEngine initialized", 
                  memory_url=self.config.memory_url,
@@ -279,9 +297,18 @@ class SOSEngine(EngineContract):
         return await self.tools.execute(request)
 
     async def get_models(self) -> List[Dict[str, Any]]:
+        # Check MLX availability
+        mlx_adapter = self.models.get("mlx-local")
+        mlx_status = "active" if (mlx_adapter and await mlx_adapter.is_available()) else "offline"
+
         return [
-            {"id": "sos-mock-v1", "name": "SOS Mock Model", "status": "active"},
-            {"id": "gemini-flash", "name": "Gemini Flash", "status": "planned"},
+            # Cloud Models
+            {"id": "sos-mock-v1", "name": "SOS Mock Model", "status": "active", "type": "mock"},
+            {"id": "gemini-3-flash-preview", "name": "Gemini 3 Flash", "status": "active", "type": "cloud"},
+            # Sovereign Local Models (MLX)
+            {"id": "mlx-local", "name": "MLX Local (Devstral)", "status": mlx_status, "type": "sovereign"},
+            {"id": "mlx-devstral-code", "name": "MLX Devstral Code", "status": mlx_status, "type": "sovereign"},
+            {"id": "mlx-qwen3-reasoning", "name": "MLX Qwen3 Reasoning", "status": mlx_status, "type": "sovereign"},
         ]
 
     async def resolve_witness(self, agent_id: str, conversation_id: str, vote: int = 1):
