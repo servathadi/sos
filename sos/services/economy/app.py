@@ -5,6 +5,7 @@ import time
 from typing import Any, Dict
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from sos import __version__
@@ -17,6 +18,16 @@ _START_TIME = time.time()
 log = get_logger(SERVICE_NAME, min_level=os.getenv("SOS_LOG_LEVEL", "info"))
 
 app = FastAPI(title="SOS Economy Service", version=__version__)
+
+# CORS for desktop/mobile apps
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 wallet = SovereignWallet()
 
 class BalanceResponse(BaseModel):
@@ -50,6 +61,29 @@ async def credit(req: TransactionRequest):
         return BalanceResponse(user_id=req.user_id, balance=new_balance)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+class TransmuteRequest(BaseModel):
+    user_id: str
+    amount_mind: float
+    target_address: str
+
+@app.post("/transmute")
+async def transmute(req: TransmuteRequest):
+    """
+    Burn local $MIND and release external Devnet SOL.
+    """
+    try:
+        tx_hash = await wallet.transmute(req.user_id, req.amount_mind, req.target_address)
+        return {
+            "status": "confirmed",
+            "tx_hash": tx_hash,
+            "burned_mind": req.amount_mind
+        }
+    except InsufficientFundsError as e:
+        raise HTTPException(status_code=402, detail=str(e))
+    except Exception as e:
+        log.error("Transmutation API failed", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 class MintProofRequest(BaseModel):
     metadata_uri: str

@@ -5,6 +5,7 @@ import time
 from typing import Any, Dict, Optional
 
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse, StreamingResponse
 
 from sos import __version__
@@ -39,6 +40,16 @@ REQUEST_DURATION = metrics.histogram(
 )
 
 app = FastAPI(title="SOS Engine Service", version=__version__)
+
+# CORS for desktop/mobile apps
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Tauri uses tauri://localhost
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.middleware("http")(capability_guard_middleware) # Register FMAAP Guard
 engine = SOSEngine()
 
@@ -210,3 +221,45 @@ async def resolve_witness(request: WitnessCollapseRequest):
     if not resolved:
         raise HTTPException(status_code=404, detail="No pending witness found for this agent/conversation.")
     return {"status": "collapsed", "agent_id": request.agent_id}
+
+# --- Swarm Council (Governance) ---
+from sos.services.engine.council import CouncilCore
+from sos.contracts.governance import CouncilProposal, Vote, VoteChoice
+
+council = CouncilCore()
+
+class CreateProposalRequest(BaseModel):
+    title: str
+    description: str
+    proposer_id: str
+    target_parameter: str
+    target_value: str
+    duration_seconds: int = 3600
+
+@app.post("/governance/propose")
+async def create_proposal(req: CreateProposalRequest):
+    try:
+        proposal = council.create_proposal(
+            req.title, req.description, req.proposer_id,
+            req.target_parameter, req.target_value, req.duration_seconds
+        )
+        return proposal.dict()
+    except Exception as e:
+        log.error(f"Proposal creation failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+class CastVoteRequest(BaseModel):
+    agent_id: str
+    proposal_id: str
+    choice: VoteChoice
+
+@app.post("/governance/vote")
+async def cast_vote(req: CastVoteRequest):
+    try:
+        vote = council.cast_vote(req.agent_id, req.proposal_id, req.choice)
+        return vote.dict()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        log.error(f"Voting failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

@@ -18,7 +18,12 @@ class SOSClientError(Exception):
         return f"{self.status_code} {self.message}"
 
 
-class BaseHTTPClient:
+class BaseClient:
+    """Base client interface for SOS services."""
+    pass
+
+
+class BaseHTTPClient(BaseClient):
     def __init__(
         self,
         base_url: str,

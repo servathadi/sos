@@ -5,6 +5,7 @@ import time
 from typing import Any, Dict, List
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
@@ -18,6 +19,16 @@ _START_TIME = time.time()
 log = get_logger(SERVICE_NAME, min_level=os.getenv("SOS_LOG_LEVEL", "info"))
 
 app = FastAPI(title="SOS Memory Service", version=__version__)
+
+# CORS for desktop/mobile apps
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 memory = MemoryCore()
 
 class AddMemoryRequest(BaseModel):
