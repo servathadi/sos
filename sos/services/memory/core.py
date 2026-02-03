@@ -12,6 +12,9 @@ from sos.services.memory.monitor import CoherenceMonitor
 
 log = get_logger("memory_core")
 
+# Backend selection via environment
+MEMORY_BACKEND = os.getenv("SOS_MEMORY_BACKEND", "local")  # "local" or "cloudflare"
+
 @dataclass
 class MemoryItem:
     id: str
@@ -33,18 +36,34 @@ class MemoryCore:
 
     def _init_storage(self):
         """
-        Lazy load storage backends.
+        Initialize storage backends based on SOS_MEMORY_BACKEND env var.
+        - "local" (default): SQLite + ChromaDB (in-memory vectors)
+        - "cloudflare": D1 + Vectorize via Gateway
         """
         try:
-            # Persistent Metadata
-            self.metadata_store = SQLiteMetadataStore()
-            
-            # Vector Backend (Lazy Loaded internally)
-            self.vector_store = ChromaBackend()
-            log.info("Initializing Memory Core (SQLite + ChromaDB)")
-            
+            if MEMORY_BACKEND == "cloudflare":
+                # Use Cloudflare backends (D1 + Vectorize)
+                from sos.services.memory.cloudflare_backends import (
+                    CloudflareD1MetadataStore,
+                    CloudflareVectorizeBackend
+                )
+                agent = os.getenv("SOS_AGENT_NAME", "sos")
+                self.metadata_store = CloudflareD1MetadataStore(agent=agent)
+                self.vector_store = CloudflareVectorizeBackend(agent=agent)
+                log.info(f"Initializing Memory Core (Cloudflare D1 + Vectorize) for agent: {agent}")
+            else:
+                # Default: Local backends (SQLite + ChromaDB)
+                self.metadata_store = SQLiteMetadataStore()
+                self.vector_store = ChromaBackend()
+                log.info("Initializing Memory Core (SQLite + ChromaDB)")
+
         except Exception as e:
             log.error("Failed to initialize storage", error=str(e))
+            # Fallback to local if Cloudflare fails
+            if MEMORY_BACKEND == "cloudflare":
+                log.warn("Falling back to local storage")
+                self.metadata_store = SQLiteMetadataStore()
+                self.vector_store = ChromaBackend()
 
     async def add(self, content: str, metadata: Dict[str, Any] = None) -> str:
         """
@@ -122,8 +141,11 @@ class MemoryCore:
         }
 
     async def health(self) -> Dict[str, Any]:
+        backend_type = "cloudflare" if MEMORY_BACKEND == "cloudflare" else "local"
         return {
             "status": "ok",
-            "backend": "mock_chroma",
+            "backend": backend_type,
+            "metadata_store": type(self.metadata_store).__name__ if self.metadata_store else None,
+            "vector_store": type(self.vector_store).__name__ if self.vector_store else None,
             "item_count": self.vector_store.count() if self.vector_store else 0
         }
