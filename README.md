@@ -112,6 +112,39 @@ mumega chat         # Interactive chat
 mumega version      # Version info
 ```
 
+## Development
+
+```bash
+# Clone
+git clone https://github.com/servathadi/sos.git
+cd sos
+
+# Install dev dependencies
+pip install -e ".[dev]"
+
+# Copy environment template
+cp .env.example .env
+# Edit .env with your API keys
+
+# Run tests
+pytest sos/tests/ -v
+
+# Run doctor to verify setup
+python -m sos.cli doctor
+```
+
+## Project Status
+
+| Component | Status |
+|-----------|--------|
+| Engine | Stable |
+| Memory | Stable |
+| Autonomy | Stable |
+| CLI | Stable |
+| PyPI | Pending |
+
+See [CHANGELOG.md](CHANGELOG.md) for version history.
+
 ## Links
 
 - **Homepage**: https://mumega.com
