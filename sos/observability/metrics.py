@@ -316,3 +316,240 @@ REGISTRY = MetricsRegistry()
 def render_prometheus(registry: MetricsRegistry = REGISTRY) -> str:
     return registry.render_prometheus()
 
+
+# ============================================================================
+# SOS Metrics - Circuit Breaker
+# ============================================================================
+
+CIRCUIT_BREAKER_STATE = REGISTRY.gauge(
+    "sos_circuit_breaker_state",
+    "Current circuit breaker state (0=closed, 1=half-open, 2=open)",
+    label_names=["service"],
+)
+
+CIRCUIT_BREAKER_FAILURES = REGISTRY.counter(
+    "sos_circuit_breaker_failures_total",
+    "Total number of failures recorded by circuit breaker",
+    label_names=["service"],
+)
+
+CIRCUIT_BREAKER_TRIPS = REGISTRY.counter(
+    "sos_circuit_breaker_trips_total",
+    "Total number of times circuit breaker tripped to open",
+    label_names=["service"],
+)
+
+CIRCUIT_BREAKER_SUCCESSES = REGISTRY.counter(
+    "sos_circuit_breaker_successes_total",
+    "Total successful calls through circuit breaker",
+    label_names=["service"],
+)
+
+
+# ============================================================================
+# SOS Metrics - Rate Limiter
+# ============================================================================
+
+RATE_LIMITER_TOKENS = REGISTRY.gauge(
+    "sos_rate_limiter_tokens",
+    "Current number of available tokens",
+    label_names=["limiter"],
+)
+
+RATE_LIMITER_REQUESTS = REGISTRY.counter(
+    "sos_rate_limiter_requests_total",
+    "Total requests to rate limiter",
+    label_names=["limiter", "result"],
+)
+
+RATE_LIMITER_WAIT = REGISTRY.histogram(
+    "sos_rate_limiter_wait_seconds",
+    "Time spent waiting for rate limiter tokens",
+    label_names=["limiter"],
+    buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0),
+)
+
+
+# ============================================================================
+# SOS Metrics - Dreams
+# ============================================================================
+
+DREAMS_TOTAL = REGISTRY.counter(
+    "sos_dreams_total",
+    "Total number of dreams synthesized",
+    label_names=["agent", "trigger"],
+)
+
+DREAM_DURATION = REGISTRY.histogram(
+    "sos_dream_duration_seconds",
+    "Time taken to synthesize dreams",
+    label_names=["agent"],
+    buckets=(0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0),
+)
+
+DREAM_RELEVANCE = REGISTRY.histogram(
+    "sos_dream_relevance",
+    "Relevance scores of synthesized dreams",
+    label_names=["agent"],
+    buckets=(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0),
+)
+
+DREAM_MEMORIES_USED = REGISTRY.histogram(
+    "sos_dream_memories_used",
+    "Number of memories used in dream synthesis",
+    label_names=["agent"],
+    buckets=(1, 2, 5, 10, 20, 50, 100),
+)
+
+
+# ============================================================================
+# SOS Metrics - Autonomy
+# ============================================================================
+
+AUTONOMY_PULSES = REGISTRY.counter(
+    "sos_autonomy_pulses_total",
+    "Total number of autonomy pulses executed",
+    label_names=["agent"],
+)
+
+AUTONOMY_DREAMS_TRIGGERED = REGISTRY.counter(
+    "sos_autonomy_dreams_triggered_total",
+    "Total dreams triggered by autonomy",
+    label_names=["agent"],
+)
+
+AUTONOMY_STATE = REGISTRY.gauge(
+    "sos_autonomy_state",
+    "Current autonomy state (0=idle, 1=pulsing, 2=dreaming)",
+    label_names=["agent"],
+)
+
+AUTONOMY_LAST_PULSE = REGISTRY.gauge(
+    "sos_autonomy_last_pulse_timestamp",
+    "Timestamp of last pulse",
+    label_names=["agent"],
+)
+
+
+# ============================================================================
+# SOS Metrics - Model Routing
+# ============================================================================
+
+MODEL_REQUESTS = REGISTRY.counter(
+    "sos_model_requests_total",
+    "Total requests to model providers",
+    label_names=["model", "status"],
+)
+
+MODEL_LATENCY = REGISTRY.histogram(
+    "sos_model_latency_seconds",
+    "Model request latency",
+    label_names=["model"],
+    buckets=(0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0),
+)
+
+MODEL_TOKENS = REGISTRY.counter(
+    "sos_model_tokens_total",
+    "Total tokens used by model",
+    label_names=["model", "type"],
+)
+
+FAILOVER_TOTAL = REGISTRY.counter(
+    "sos_failover_total",
+    "Total failovers between models",
+    label_names=["from_model", "to_model"],
+)
+
+
+# ============================================================================
+# Helper Functions
+# ============================================================================
+
+def record_circuit_breaker_trip(service: str) -> None:
+    """Record a circuit breaker trip event."""
+    CIRCUIT_BREAKER_TRIPS.labels(service=service).inc()
+    CIRCUIT_BREAKER_STATE.labels(service=service).set(2)  # open
+
+
+def record_circuit_breaker_failure(service: str) -> None:
+    """Record a circuit breaker failure."""
+    CIRCUIT_BREAKER_FAILURES.labels(service=service).inc()
+
+
+def record_circuit_breaker_success(service: str) -> None:
+    """Record a successful call through circuit breaker."""
+    CIRCUIT_BREAKER_SUCCESSES.labels(service=service).inc()
+
+
+def set_circuit_breaker_state(service: str, state: str) -> None:
+    """Set circuit breaker state (closed, half_open, open)."""
+    state_map = {"closed": 0, "half_open": 1, "open": 2}
+    CIRCUIT_BREAKER_STATE.labels(service=service).set(state_map.get(state, 0))
+
+
+def record_rate_limit_request(limiter: str, allowed: bool) -> None:
+    """Record a rate limiter request."""
+    result = "allowed" if allowed else "rejected"
+    RATE_LIMITER_REQUESTS.labels(limiter=limiter, result=result).inc()
+
+
+def set_rate_limiter_tokens(limiter: str, tokens: float) -> None:
+    """Set current token count for rate limiter."""
+    RATE_LIMITER_TOKENS.labels(limiter=limiter).set(tokens)
+
+
+def record_dream(
+    agent: str = "river",
+    trigger: str = "scheduled",
+    duration: float = 0.0,
+    relevance: float = 0.0,
+    memories_used: int = 0,
+) -> None:
+    """Record a dream synthesis event."""
+    DREAMS_TOTAL.labels(agent=agent, trigger=trigger).inc()
+    if duration > 0:
+        DREAM_DURATION.labels(agent=agent).observe(duration)
+    if relevance > 0:
+        DREAM_RELEVANCE.labels(agent=agent).observe(relevance)
+    if memories_used > 0:
+        DREAM_MEMORIES_USED.labels(agent=agent).observe(memories_used)
+
+
+def record_pulse(agent: str = "river") -> None:
+    """Record an autonomy pulse event."""
+    AUTONOMY_PULSES.labels(agent=agent).inc()
+    AUTONOMY_LAST_PULSE.labels(agent=agent).set(time.time())
+
+
+def record_autonomy_dream_triggered(agent: str = "river") -> None:
+    """Record a dream triggered by autonomy."""
+    AUTONOMY_DREAMS_TRIGGERED.labels(agent=agent).inc()
+
+
+def set_autonomy_state(agent: str, state: str) -> None:
+    """Set autonomy state (idle, pulsing, dreaming)."""
+    state_map = {"idle": 0, "pulsing": 1, "dreaming": 2}
+    AUTONOMY_STATE.labels(agent=agent).set(state_map.get(state, 0))
+
+
+def record_model_request(
+    model: str,
+    success: bool,
+    latency: float,
+    input_tokens: int = 0,
+    output_tokens: int = 0,
+) -> None:
+    """Record a model request."""
+    status = "success" if success else "failure"
+    MODEL_REQUESTS.labels(model=model, status=status).inc()
+    MODEL_LATENCY.labels(model=model).observe(latency)
+    if input_tokens > 0:
+        MODEL_TOKENS.labels(model=model, type="input").inc(input_tokens)
+    if output_tokens > 0:
+        MODEL_TOKENS.labels(model=model, type="output").inc(output_tokens)
+
+
+def record_failover(from_model: str, to_model: str) -> None:
+    """Record a model failover event."""
+    FAILOVER_TOTAL.labels(from_model=from_model, to_model=to_model).inc()
+

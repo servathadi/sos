@@ -11,7 +11,11 @@ from fastapi.responses import JSONResponse, PlainTextResponse, StreamingResponse
 from sos import __version__
 from sos.kernel import Config
 from sos.observability.logging import clear_context, get_logger, set_agent_context
-from sos.observability.metrics import MetricsRegistry, render_prometheus
+from sos.observability.metrics import (
+    MetricsRegistry,
+    render_prometheus,
+    REGISTRY as SOS_METRICS_REGISTRY,
+)
 from sos.observability.tracing import (
     TRACE_ID_HEADER,
     SPAN_ID_HEADER,
@@ -183,8 +187,11 @@ async def health() -> Dict[str, Any]:
 
 @app.get("/metrics")
 async def metrics_endpoint():
+    """Prometheus metrics endpoint with all SOS metrics."""
+    # Combine local service metrics with global SOS metrics
+    output = render_prometheus(metrics) + render_prometheus(SOS_METRICS_REGISTRY)
     return PlainTextResponse(
-        render_prometheus(metrics),
+        output,
         media_type="text/plain; version=0.0.4",
     )
 # --- Sovereign Gateway Proxies ---
