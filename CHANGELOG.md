@@ -22,13 +22,18 @@ All notable changes to SOS (Sovereign Operating System) will be documented here.
 - Python 3.10+ required
 - Optional dependencies: gemini, openai, local, full
 
-## [Unreleased]
+## [0.1.1] - 2026-02-03
 
 ### Added
 - **Security**: SSRF protection for external API calls (#47)
 - **Security**: Scope-based authorization system (#50)
 - **Security**: Ed25519 capability signature verification (#1)
 - **Observability**: Prometheus metrics for circuit breakers, rate limiters, dreams, autonomy (#18)
+- **Reliability**: Gateway failover with circuit breaker persistence (#15)
+- **Testing**: Load tests for rate limiter and circuit breaker (#20)
+- **Ops**: Prometheus alerting rules for SOS services (#23)
+
+## [Unreleased]
 
 ### Pending
-- PyPI publication (#37)
+- Additional model provider integrations
