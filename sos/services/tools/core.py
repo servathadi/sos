@@ -1,6 +1,12 @@
 from typing import Any, Dict, List, Optional
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import importlib
+import inspect
+import json
+import sys
+from pathlib import Path
+from datetime import datetime, timezone
+import os
 
 from sos.kernel import Config
 from sos.observability.logging import get_logger
@@ -12,6 +18,20 @@ class ToolDefinition:
     name: str
     description: str
     arguments: Dict[str, Any]
+
+@dataclass
+class PluginManifest:
+    name: str
+    version: str
+    author: Optional[str] = None
+    description: Optional[str] = None
+    trust_level: str = "community"  # core | verified | community | unsigned
+    capabilities_required: List[str] = field(default_factory=list)
+    capabilities_provided: List[str] = field(default_factory=list)
+    entrypoints: Dict[str, Any] = field(default_factory=dict)
+    sandbox: Dict[str, Any] = field(default_factory=dict)
+    signature: Optional[str] = None
+    path: Optional[Path] = None
 
 class ToolExecutor:
     """Abstract base for tool execution."""
@@ -29,7 +49,24 @@ class LocalTools(ToolExecutor):
             "generate_ui_asset": self._generate_ui_asset,
             "google_drive_list": self._google_drive_list,
             "google_sheet_read": self._google_sheet_read,
+            "query_library": self._query_library,
         }
+
+    async def _query_library(self, args: Dict[str, Any]) -> str:
+        import httpx
+        MEMORY_URL = "http://sos-memory:8001" # Internal Docker URL
+        query = args.get("query")
+        if not query:
+            return "Error: Missing query"
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.post(f"{MEMORY_URL}/search", json={"query": query, "limit": 3})
+                if resp.status_code == 200:
+                    results = resp.json().get("results", [])
+                    return "\n\n".join([f"--- Fragment ---\n{r['content']}" for r in results])
+                return f"Memory Error: {resp.status_code}"
+        except Exception as e:
+            return f"Library Access Error: {e}"
 
     async def execute(self, tool_name: str, args: Dict[str, Any]) -> Any:
         if tool_name not in self._tools:
@@ -141,15 +178,31 @@ class ToolsCore:
         self.config = config or Config.load()
         self.local_tools = LocalTools()
         self.mcp_bridge = MCPBridge()
+        self.plugins: Dict[str, PluginManifest] = {}
+        self.plugin_tools: Dict[str, PluginManifest] = {}
+        self.plugin_entrypoints: Dict[str, str] = {}
+        self._load_plugins()
 
     async def execute(self, tool_name: str, args: Dict[str, Any]) -> Any:
         log.info(f"Tool Execution Request: {tool_name}")
-        
-        # Route to Local or MCP
-        if "__" in tool_name:
-            return await self.mcp_bridge.execute(tool_name, args)
-            
-        return await self.local_tools.execute(tool_name, args)
+        try:
+            # Route to Local or MCP
+            if "__" in tool_name:
+                result = await self.mcp_bridge.execute(tool_name, args)
+                self._audit_tool_call(tool_name, args, ok=True)
+                return result
+
+            if tool_name in self.plugin_tools:
+                result = await self._execute_plugin_tool(tool_name, args)
+                self._audit_tool_call(tool_name, args, ok=True)
+                return result
+                
+            result = await self.local_tools.execute(tool_name, args)
+            self._audit_tool_call(tool_name, args, ok=True)
+            return result
+        except Exception as exc:
+            self._audit_tool_call(tool_name, args, ok=False, error=str(exc))
+            raise
 
     async def list_tools(self) -> List[Dict[str, Any]]:
         local = [
@@ -160,7 +213,109 @@ class ToolsCore:
             {"name": "wallet_debit", "description": "Debit funds from wallet"},
             {"name": "wallet_credit", "description": "Credit funds to wallet"},
             {"name": "google_drive_list", "description": "List files from Google Drive"},
-            {"name": "google_sheet_read", "description": "Read values from a Google Sheet"}
+            {"name": "google_sheet_read", "description": "Read values from a Google Sheet"},
+            {"name": "query_library", "description": "Access the FRC library for deep physics reasoning"}
+        ]
+        plugins = [
+            {
+                "name": tool_name,
+                "description": self.plugin_tools[tool_name].description or "Plugin tool",
+                "plugin": self.plugin_tools[tool_name].name,
+            }
+            for tool_name in sorted(self.plugin_tools.keys())
         ]
         mcp = await self.mcp_bridge.list_tools()
-        return local + mcp
+        return local + plugins + mcp
+
+    def _load_plugins(self) -> None:
+        plugins_dir = self.config.paths.plugins_dir
+        if not plugins_dir.exists():
+            return
+
+        for plugin_dir in plugins_dir.iterdir():
+            if not plugin_dir.is_dir():
+                continue
+            manifest_path = plugin_dir / "plugin.json"
+            if not manifest_path.exists():
+                continue
+            try:
+                manifest = json.loads(manifest_path.read_text())
+                plugin = PluginManifest(
+                    name=manifest["name"],
+                    version=manifest["version"],
+                    author=manifest.get("author"),
+                    description=manifest.get("description"),
+                    trust_level=manifest.get("trust_level", "community"),
+                    capabilities_required=manifest.get("capabilities_required", []),
+                    capabilities_provided=manifest.get("capabilities_provided", []),
+                    entrypoints=manifest.get("entrypoints", {}),
+                    sandbox=manifest.get("sandbox", {}),
+                    signature=manifest.get("signature"),
+                    path=plugin_dir,
+                )
+                if not self._trust_allowed(plugin.trust_level):
+                    log.warning(f"Skipping plugin {plugin.name}: trust_level={plugin.trust_level}")
+                    continue
+
+                self.plugins[plugin.name] = plugin
+                self._register_plugin_tools(plugin)
+                log.info(f"Loaded plugin: {plugin.name}@{plugin.version}")
+            except Exception as exc:
+                log.error(f"Failed to load plugin at {manifest_path}: {exc}")
+
+    def _register_plugin_tools(self, plugin: PluginManifest) -> None:
+        entrypoints = plugin.entrypoints or {}
+        tools_map = entrypoints.get("tools", {})
+        if isinstance(entrypoints.get("tool"), str) and plugin.capabilities_provided:
+            tool_name = plugin.capabilities_provided[0]
+            tools_map.setdefault(tool_name, entrypoints["tool"])
+
+        for tool_name in plugin.capabilities_provided:
+            self.plugin_tools[tool_name] = plugin
+            if tool_name in tools_map:
+                self.plugin_entrypoints[tool_name] = tools_map[tool_name]
+
+    def _trust_allowed(self, trust_level: str) -> bool:
+        env = (os.getenv("SOS_ENV", "development") or "development").lower()
+        if env == "production" and trust_level == "unsigned":
+            return False
+        return True
+
+    async def _execute_plugin_tool(self, tool_name: str, args: Dict[str, Any]) -> Any:
+        entrypoint = self.plugin_entrypoints.get(tool_name)
+        if not entrypoint:
+            raise ValueError(f"Plugin tool missing entrypoint: {tool_name}")
+
+        module_path, func_name = entrypoint.split(":", 1)
+        plugin = self.plugin_tools[tool_name]
+        if plugin.path:
+            sys.path.insert(0, str(plugin.path))
+        try:
+            module = importlib.import_module(module_path)
+            handler = getattr(module, func_name)
+            if inspect.iscoroutinefunction(handler):
+                return await handler(args)
+            return handler(args)
+        finally:
+            if plugin.path and str(plugin.path) in sys.path:
+                sys.path.remove(str(plugin.path))
+
+    def _audit_tool_call(self, tool_name: str, args: Dict[str, Any], ok: bool, error: Optional[str] = None) -> None:
+        try:
+            audit_dir = self.config.paths.data_dir / "audit"
+            audit_dir.mkdir(parents=True, exist_ok=True)
+            ledger_dir = self.config.paths.ledger_dir
+            ledger_dir.mkdir(parents=True, exist_ok=True)
+            record = {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "tool": tool_name,
+                "ok": ok,
+                "error": error,
+                "args": args,
+            }
+            with open(audit_dir / "tools.jsonl", "a") as f:
+                f.write(json.dumps(record) + "\n")
+            with open(ledger_dir / "audit.jsonl", "a") as f:
+                f.write(json.dumps(record) + "\n")
+        except Exception as exc:
+            log.warning(f"Failed to write audit log: {exc}")

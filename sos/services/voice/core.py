@@ -7,6 +7,10 @@ Supports:
 - Gemini TTS - Native multimodal
 
 Adapted from /cli/mumega/core/voice.py for SOS architecture.
+
+Partner Integration:
+- Profiles can be loaded from dnu_partners table via partner_id
+- heygen_voice_id maps to custom ElevenLabs voice
 """
 
 import os
@@ -19,6 +23,26 @@ from enum import Enum
 import io
 
 logger = logging.getLogger(__name__)
+
+# Supabase client for partner data
+_supabase_client = None
+
+def get_supabase():
+    """Get or create Supabase client for partner lookups"""
+    global _supabase_client
+    if _supabase_client is None:
+        url = os.getenv("SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL")
+        key = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_KEY")
+        if url and key:
+            try:
+                from supabase import create_client
+                _supabase_client = create_client(url, key)
+                logger.info("Supabase client initialized for voice service")
+            except ImportError:
+                logger.warning("supabase package not installed - partner profiles disabled")
+            except Exception as e:
+                logger.warning(f"Failed to init Supabase: {e}")
+    return _supabase_client
 
 # Audio format constants
 SAMPLE_RATE = 24000
@@ -320,8 +344,9 @@ class GeminiProvider(VoiceProvider):
         if self.api_key:
             try:
                 from google import genai
-                self.client = genai.Client(api_key=self.api_key)
-                logger.info("Gemini voice provider initialized")
+                use_vertex = os.getenv("SOS_USE_VERTEX_AI", "false").lower() in ("true", "1", "t", "y", "yes")
+                self.client = genai.Client(api_key=self.api_key, vertexai=use_vertex)
+                logger.info(f"Gemini voice provider initialized (VertexAI: {use_vertex})")
             except ImportError:
                 logger.warning("google-genai package not installed")
 
@@ -440,8 +465,56 @@ class VoiceService:
         logger.info(f"Registered voice profile: {profile.profile_id}")
 
     def get_profile(self, profile_id: str) -> Optional[VoiceProfile]:
-        """Get a registered voice profile"""
-        return self.profiles.get(profile_id)
+        """
+        Get a voice profile by ID.
+
+        Lookup order:
+        1. In-memory cache (for manually registered profiles)
+        2. dnu_partners table (for partner_id lookups)
+
+        Partner data is cached after first lookup.
+        """
+        # Check cache first
+        if profile_id in self.profiles:
+            return self.profiles[profile_id]
+
+        # Try to load from partner table
+        profile = self._load_partner_profile(profile_id)
+        if profile:
+            self.profiles[profile_id] = profile
+            logger.info(f"Loaded partner profile from Supabase: {profile_id}")
+
+        return profile
+
+    def _load_partner_profile(self, partner_id: str) -> Optional[VoiceProfile]:
+        """Load voice profile from dnu_partners table"""
+        supabase = get_supabase()
+        if not supabase:
+            return None
+
+        try:
+            result = supabase.table("dnu_partners").select(
+                "id, practice_name, heygen_voice_id"
+            ).eq("id", partner_id).single().execute()
+
+            if result.data:
+                partner = result.data
+                voice_id = partner.get("heygen_voice_id")
+
+                # If partner has custom voice, use it; otherwise use dandan default
+                return VoiceProfile(
+                    profile_id=partner["id"],
+                    provider=Provider.ELEVENLABS,
+                    voice_id="dandan",  # Default
+                    name=partner.get("practice_name", "Practice"),
+                    description=f"Voice profile for {partner.get('practice_name', 'partner')}",
+                    is_custom=bool(voice_id),
+                    custom_voice_id=voice_id,  # ElevenLabs custom voice ID
+                )
+        except Exception as e:
+            logger.warning(f"Failed to load partner profile {partner_id}: {e}")
+
+        return None
 
     async def synthesize(
         self,

@@ -6,6 +6,9 @@ from sos.clients.base import BaseHTTPClient
 
 
 class MemoryClient(BaseHTTPClient):
+    def __init__(self, base_url: str = "http://localhost:7070", **kwargs):
+        super().__init__(base_url, **kwargs)
+
     async def health(self) -> Dict[str, Any]:
         return self._request("GET", "/health").json()
 

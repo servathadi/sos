@@ -7,7 +7,7 @@ services:
     image: redis:7-alpine
     container_name: sos-nervous-system
     ports:
-      - "6379:6379"
+      - "6079:6379"
     volumes:
       - ./data/redis:/data
     networks:
@@ -33,8 +33,10 @@ services:
       - SOS_MEMORY_URL=http://sos-memory:8001
       - SOS_TOOLS_URL=http://sos-tools:8003
       - SOS_ECONOMY_URL=http://sos-economy:8002
+      - SOS_IDENTITY_URL=http://sos-identity:8004
+      - SOS_VOICE_URL=http://sos-voice:6065
     ports:
-      - "8000:8000"
+      - "6060:8000"
     volumes:
       - ./data/engine:/app/data
       - ./sos:/app/sos
@@ -54,7 +56,7 @@ services:
     environment:
       - SOS_REDIS_URL=redis://redis:6379/0
     ports:
-      - "8001:8001"
+      - "7070:8001"
     volumes:
       - ./data/memory:/app/data
     networks:
@@ -70,7 +72,7 @@ services:
     environment:
       - SOS_REDIS_URL=redis://redis:6379/0
     ports:
-      - "8002:8002"
+      - "6062:8002"
     volumes:
       - ./data/economy:/app/data
     networks:
@@ -86,7 +88,7 @@ services:
     environment:
       - SOS_REDIS_URL=redis://redis:6379/0
     ports:
-      - "8003:8003"
+      - "6063:8003"
     volumes:
       - ./data/tools:/app/data
     networks:
@@ -103,7 +105,7 @@ services:
       - SOS_REDIS_URL=redis://redis:6379/0
       - SOS_HOME=/app/data
     ports:
-      - "8004:8004"
+      - "6064:8004"
     volumes:
       - ./data/identity:/app/data
     depends_on:

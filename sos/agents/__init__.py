@@ -14,6 +14,9 @@ from sos.agents.definitions import (
     MIZAN,
     MUMEGA,
     CODEX,
+    CONSULTANT,
+    DANDAN,
+    ALL_AGENTS,
 )
 
 __all__ = [
@@ -25,4 +28,7 @@ __all__ = [
     "MIZAN",
     "MUMEGA",
     "CODEX",
+    "CONSULTANT",
+    "DANDAN",
+    "ALL_AGENTS",
 ]

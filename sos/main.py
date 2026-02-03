@@ -24,6 +24,7 @@ def main():
     parser.add_argument("--telegram", action="store_true", help="Start the Telegram Adapter")
     parser.add_argument("--engine", action="store_true", help="Start the Engine Service")
     parser.add_argument("--deck", action="store_true", help="Open the Command Deck (Local)")
+    parser.add_argument("--doctor", action="store_true", help="Run SOS doctor checks")
     
     args = parser.parse_args()
 
@@ -40,6 +41,10 @@ def main():
     elif args.deck:
         print("🚀 Opening the Command Deck: https://mumega.com/deck")
         # In a desktop env, we would use: webbrowser.open("https://mumega.com/deck")
+
+    elif args.doctor:
+        from sos.observability.doctor import run_doctor
+        raise SystemExit(run_doctor())
     
     else:
         parser.print_help()

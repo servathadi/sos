@@ -20,12 +20,10 @@ import logging
 from typing import Optional, AsyncIterator, Dict, Any
 import httpx
 
-from .base import BaseClient
-
 logger = logging.getLogger(__name__)
 
 
-class VoiceClient(BaseClient):
+class VoiceClient:
     """Client for the SOS Voice Service"""
 
     def __init__(self, base_url: str = None):

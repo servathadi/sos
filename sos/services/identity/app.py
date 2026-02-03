@@ -22,6 +22,17 @@ class GuildJoin(BaseModel):
     guild_id: str
     user_id: str
 
+class PairingCreate(BaseModel):
+    channel: str
+    sender_id: str
+    agent_id: str
+    expires_minutes: Optional[int] = 10
+
+class PairingApprove(BaseModel):
+    channel: str
+    code: str
+    approver_id: str
+
 # --- Endpoints ---
 
 @app.post("/users/create")
@@ -57,3 +68,34 @@ async def join_guild(req: GuildJoin):
 @app.get("/guilds/{guild_id}/members")
 async def list_members(guild_id: str):
     return core.list_members(guild_id)
+
+# --- Pairing / Allowlist Endpoints ---
+
+@app.post("/pairing/create")
+async def create_pairing(req: PairingCreate):
+    try:
+        return core.create_pairing(
+            channel=req.channel,
+            sender_id=req.sender_id,
+            agent_id=req.agent_id,
+            expires_minutes=req.expires_minutes or 10,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/pairing/approve")
+async def approve_pairing(req: PairingApprove):
+    result = core.approve_pairing(
+        channel=req.channel,
+        code=req.code,
+        approver_id=req.approver_id,
+    )
+    if not result.get("ok"):
+        raise HTTPException(status_code=400, detail=result.get("error", "pairing_failed"))
+    return result
+
+
+@app.get("/allowlist/{channel}")
+async def list_allowlist(channel: str):
+    return core.list_allowlist(channel)

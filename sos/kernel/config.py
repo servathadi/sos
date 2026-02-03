@@ -126,10 +126,10 @@ class Config:
     features: dict[str, bool] = field(default_factory=dict)
 
     # Service URLs (for http mode)
-    engine_url: str = "http://localhost:8000"
-    memory_url: str = "http://localhost:8001"
-    economy_url: str = "http://localhost:8002"
-    tools_url: str = "http://localhost:8003"
+    engine_url: str = "http://localhost:6060"
+    memory_url: str = "http://localhost:7070"
+    economy_url: str = "http://localhost:6062"
+    tools_url: str = "http://localhost:6063"
 
     def __post_init__(self):
         """Apply environment variable overrides."""
@@ -204,10 +204,10 @@ class Config:
             log_level=config_dict.get("log_level", "info"),
             services=config_dict.get("services", {}),
             features=config_dict.get("features", {}),
-            engine_url=config_dict.get("engine_url", "http://localhost:8000"),
-            memory_url=config_dict.get("memory_url", "http://localhost:8001"),
-            economy_url=config_dict.get("economy_url", "http://localhost:8002"),
-            tools_url=config_dict.get("tools_url", "http://localhost:8003"),
+            engine_url=config_dict.get("engine_url", "http://localhost:6060"),
+            memory_url=config_dict.get("memory_url", "http://localhost:7070"),
+            economy_url=config_dict.get("economy_url", "http://localhost:6062"),
+            tools_url=config_dict.get("tools_url", "http://localhost:6063"),
         )
 
 
@@ -219,6 +219,7 @@ EDITION_DEFAULTS: dict[str, dict[str, Any]] = {
             "economy_enabled": True,
             "tool_execution": True,
             "content_filter": False,
+            "telemetry_enabled": False,
         },
         "services": {
             "memory": {"max_engrams": 100000},
@@ -231,6 +232,7 @@ EDITION_DEFAULTS: dict[str, dict[str, Any]] = {
             "economy_enabled": False,
             "tool_execution": True,
             "content_filter": True,
+            "telemetry_enabled": False,
         },
         "services": {
             "memory": {"max_engrams": 10000},
@@ -243,6 +245,7 @@ EDITION_DEFAULTS: dict[str, dict[str, Any]] = {
             "economy_enabled": False,
             "tool_execution": True,
             "content_filter": True,
+            "telemetry_enabled": False,
         },
         "services": {
             "tools": {
@@ -259,6 +262,7 @@ EDITION_DEFAULTS: dict[str, dict[str, Any]] = {
             "tool_execution": True,
             "content_filter": False,
             "creative_mode": True,
+            "telemetry_enabled": False,
         },
         "services": {
             "memory": {"max_engrams": 50000},

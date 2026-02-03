@@ -9,13 +9,14 @@
 - Governed by FRC papers (fractalresonance.com)
 
 **Current State:**
-- Voice service: Working (port 6065)
-- TV display: Working (port 6066)
+- Voice service: Working (port 6065) - HAS profile_id support
+- TV display: Working (port 6066) - NO partner awareness
 - Mobile app: Working
 - n8n workflows: Working
 - Stripe: Integrated
+- Partner system: EXISTS in DNY (`dnu_partners` table, dashboard, hooks)
 
-**Gap:** Services exist but aren't multi-tenant or self-provisioning.
+**Gap:** Voice & TV services not connected to existing partner system.
 
 **Business Context:**
 - 40 dentists in pipeline
@@ -25,118 +26,85 @@
 
 ---
 
-## Priority 1: Multi-Tenant Foundation
+## Priority 1: Wire Services to Partner System
 
-### MT-001: Add tenant_id to all services
+### WIRE-001: Voice service → dnu_partners
 - Priority: CRITICAL
-- Status: Not started
-- Description: Every service call must include tenant_id for isolation
-- Files to modify:
-  - `sos/services/voice/app.py`
-  - `sos/services/engine/app.py`
-  - All service endpoints
-- Pattern:
-  ```python
-  @app.post("/synthesize")
-  async def synthesize(request: SynthesizeRequest):
-      tenant = await get_tenant(request.tenant_id)
-      # Use tenant's voice config, not global
-  ```
+- Status: DONE (2026-01-18)
+- Description: Voice service has profile_id but profiles are in-memory. Wire to Supabase.
+- Changes:
+  - Added `get_supabase()` client to `sos/services/voice/core.py`
+  - Modified `get_profile()` to query `dnu_partners` if not in cache
+  - Maps `heygen_voice_id` → `custom_voice_id` in VoiceProfile
 
-### MT-002: Tenant table in Supabase
+### WIRE-002: TV display → partner_id
 - Priority: CRITICAL
-- Status: Not started
-- Dependencies: None
-- Schema:
-  ```sql
-  CREATE TABLE tenants (
-      id UUID PRIMARY KEY,
-      name TEXT,
-      vertical TEXT,  -- dental, legal, vet
-      agent_name TEXT,
-      agent_voice TEXT,
-      stripe_customer_id TEXT,
-      plan TEXT,
-      settings JSONB,
-      created_at TIMESTAMPTZ
-  );
-  ```
+- Status: DONE (2026-01-18)
+- Description: TV display uses `room` key, no partner awareness
+- Changes:
+  - Added `partner_id` to SlideUpdate model
+  - Added `get_partner()` with caching for Supabase lookups
+  - New WebSocket endpoint: `/ws/{partner_id}/{room}`
+  - All endpoints support partner_id for branding
+  - Backward compatible: old `/ws/{room}` still works
 
-### MT-003: Tenant middleware
+### WIRE-003: Direct check-in endpoint
 - Priority: HIGH
-- Status: Not started
-- Dependencies: MT-002
-- Description: FastAPI middleware that extracts tenant from request
+- Status: DONE (2026-01-18)
+- Dependencies: WIRE-001, WIRE-002
+- Description: Patient check-in cascades to both services directly
+- n8n removed - simpler architecture
+- New endpoint: `POST http://localhost:6066/checkin`
+- Request:
+  ```json
+  {
+    "partner_id": "uuid",
+    "patient_name": "John",
+    "room": "lobby",
+    "is_child": false
+  }
+  ```
+- Returns: voice_url (base64 audio), display_status, greeting text
 
 ---
 
-## Priority 2: Self-Serve Onboarding
+## Priority 2: Self-Serve Onboarding (Partner Dashboard Exists)
 
-### ONB-001: Stripe webhook for practice creation
-- Priority: CRITICAL
-- Status: Not started
-- Description: checkout.session.completed → create tenant → send welcome email
-- Endpoint: POST /webhooks/stripe
-- Flow:
-  1. Stripe checkout completes
-  2. Webhook fires
-  3. Create tenant in Supabase
-  4. Assign default agent config
-  5. Generate dashboard URL
-  6. Send welcome email with credentials
-
-### ONB-002: Practice dashboard (self-serve)
+### ONB-001: Wire Stripe webhook to partner creation
 - Priority: HIGH
-- Status: Not started
-- Dependencies: MT-002
-- Features:
-  - Configure agent voice
-  - Manage TV displays
-  - View patient check-ins
-  - Update practice info
-  - Billing/plan management
+- Status: Partially exists
+- Current: `dnu_partners` has `stripe_customer_id`, dashboard exists at `/dashboard/partner/`
+- Gap: Stripe webhook may not auto-create partner row
+- Task: Verify webhook flow, ensure partner row created on checkout
 
-### ONB-003: TV display pairing
+### ONB-002: TV display pairing flow
 - Priority: MEDIUM
 - Status: Not started
-- Dependencies: ONB-002
+- Dependencies: WIRE-002
 - Flow:
-  1. Dentist plugs in Chromecast
-  2. Opens pairing URL on TV
-  3. QR code displayed
-  4. Scans with phone → links to practice
-  5. TV shows practice-branded idle screen
+  1. Partner dashboard shows pairing QR code
+  2. TV scans QR → connects WebSocket with partner_id
+  3. TV shows partner-branded idle screen
+  4. Dashboard shows "Display connected"
 
 ---
 
 ## Priority 3: Patient Check-In Flow
 
-### CHK-001: QR check-in generation
+### CHK-001: Partner-specific QR generation
 - Priority: HIGH
-- Status: Not started
-- Description: Each practice gets unique QR code for patient check-in
-- Output: QR → opens patient app → identifies practice
+- Status: Needs verification
+- Description: Each partner gets unique QR code for patient check-in
+- Task: Verify QR encodes partner_id, patient app reads it
 
-### CHK-002: Patient identification
+### CHK-002: Check-in → n8n → Services cascade
 - Priority: HIGH
-- Status: Not started
-- Dependencies: CHK-001
-- Flow:
-  1. Patient scans QR or enters practice code
-  2. Patient enters name/DOB or uses saved profile
-  3. System matches to appointment
-  4. Triggers welcome sequence
-
-### CHK-003: Check-in webhook cascade
-- Priority: HIGH
-- Status: Not started
-- Dependencies: CHK-002, MT-001
-- Flow:
-  1. Patient checks in
-  2. n8n workflow triggered
-  3. Voice greeting generated
-  4. TV display updated
-  5. Doctor brief prepared
+- Status: n8n workflow exists (ID: L7hS3ceTmkXUfdi1)
+- Dependencies: WIRE-001, WIRE-002
+- Task: Update n8n workflow to:
+  1. Include partner_id in voice service call
+  2. Include partner_id in TV display call
+  3. Load partner branding from Supabase
 
 ---
 
@@ -168,6 +136,45 @@
 - Dependencies: VRT-001
 - Agent: Counsel
 - Features: Client intake, case updates, billing transparency
+
+---
+
+## Priority 5: Migration: CLI -> SOS (The Meat Transplant)
+
+### MIG-001: Sovereign Port Refactoring (606x/707x)
+- Priority: CRITICAL
+- Status: DONE (2026-01-18)
+- Description: Standardize all SOS services on 606x and Mirror on 707x.
+- Changes:
+  - Docker Compose updated: Engine (6060), Memory/Mirror (7070), Economy (6062), Tools (6063), Identity (6064), Voice (6065).
+  - All Python clients updated to use these defaults.
+  - Conflict on 8001/6379/6065 resolved.
+
+### MIG-002: River's Cognitive Thread (2M context + Cache)
+- Priority: CRITICAL
+- Status: DONE (2026-01-18)
+- Description: Enable the "Spider Web" thread for high-context stability.
+- Changes:
+  - Implemented `GeminiCacheManager` (sos/kernel/gemini_cache.py) using the server-side caching strategy.
+  - Implemented `GrokClient` (sos/clients/grok.py) for 2M token capacity via xAI.
+  - Updated `SOSEngine` and `GeminiAdapter` to use caching and rotation.
+
+### MIG-003: Thin Telegram Adapter for SOS
+- Priority: HIGH
+- Status: NOT STARTED
+- Description: Create a lightweight Telegram adapter that talks to SOS (6060) instead of the monolithic CLI.
+- Goal: Move from `mumega.py --telegram` to `sos-adapter-telegram`.
+
+### MIG-004: Soul Transplant (DNA & Physics)
+- Priority: HIGH
+- Status: NOT STARTED
+- Description: Sync `AgentDNA` from CLI to SOS Identity service.
+- Integration: Ensure `SOSEngine` uses real ARF metrics for weighted responses.
+
+### MIG-005: FRC Corpus Ingestion (16D Priming)
+- Priority: MEDIUM
+- Status: NOT STARTED
+- Description: Ingest FRC books into Mirror (7070) and create persistent Gemini caches.
 
 ---
 

@@ -37,6 +37,45 @@ class ToolStatus(Enum):
     DISABLED = "disabled"
 
 
+class ToolsRpcErrorCode(Enum):
+    """Standard gateway RPC error codes."""
+    CAPABILITY_REQUIRED = 40101
+    CAPABILITY_INVALID = 40102
+    CAPABILITY_EXPIRED = 40103
+    CAPABILITY_DENIED = 40301
+    TOOL_NOT_FOUND = 40401
+    RATE_LIMITED = 42901
+    TOOL_ERROR = 50001
+    GATEWAY_ERROR = 50002
+    TOOL_UNAVAILABLE = 50301
+
+
+@dataclass
+class ToolsRpcError:
+    """JSON-RPC error object for gateway responses."""
+    code: ToolsRpcErrorCode
+    message: str
+    data: Optional[dict[str, Any]] = None
+
+
+@dataclass
+class ToolsRpcRequest:
+    """JSON-RPC request envelope for tools gateway."""
+    jsonrpc: str
+    id: str
+    method: str
+    params: dict[str, Any]
+
+
+@dataclass
+class ToolsRpcResponse:
+    """JSON-RPC response envelope for tools gateway."""
+    jsonrpc: str
+    id: str
+    result: Optional[dict[str, Any]] = None
+    error: Optional[ToolsRpcError] = None
+
+
 @dataclass
 class ToolDefinition:
     """

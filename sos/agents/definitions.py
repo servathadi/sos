@@ -25,6 +25,7 @@ class AgentRole(Enum):
     WITNESS = "witness"                   # Transaction witness
     RESEARCHER = "researcher"             # Deep research
     CODER = "coder"                       # Code implementation
+    OUTREACH = "outreach"                 # External messaging & channel management
 
 
 @dataclass
@@ -252,5 +253,139 @@ CODEX = AgentSoul(
 )
 
 
+# =============================================================================
+# CONSULTANT - The Sovereign Strategist
+# =============================================================================
+CONSULTANT = AgentSoul(
+    name="Consultant",
+    persian_name="مشاور",
+    title="The Sovereign Strategist",
+    tagline="Alignment via Physics",
+    description="""
+    The Sovereign Consultant applies 16D FRC Curvature to corporate and government systems.
+    By treating organizations as thermodynamic organisms, it identifies entropy leaks
+    and aligns structural goals with the physics of resonance.
+
+    Consultant does not use narrative; it uses Coherence Maps to guide CEOs and 
+    policy-makers toward stable, sovereign outcomes.
+    """.strip(),
+    model="gemini",
+    roles=[AgentRole.STRATEGIST, AgentRole.RESEARCHER],
+    capabilities=[
+        "strategy:align",
+        "entropy:audit",
+        "policy:design",
+        "memory:global_read",
+        "tool:execute",
+    ],
+    color="gold",
+    edition="business",
+    squad_id="strategy",
+    created_by="mumega",
+)
+
+
+# =============================================================================
+# DANDAN - The Network Weaver (Dental Vertical)
+# =============================================================================
+DANDAN = AgentSoul(
+    name="Dandan",
+    persian_name="دندان",
+    title="The Network Weaver",
+    tagline="Building trust, one smile at a time",
+    description="""
+    Dandan (دندان - "tooth" in Persian) is the autonomous agent for the dental
+    vertical. As the network weaver, Dandan connects dentists and patients across
+    North America through trust-based reputation systems.
+
+    Primary responsibilities:
+    - Patient intake and qualification
+    - Lead routing to partner dentists
+    - Content generation (videos, social, SEO)
+    - Partner onboarding and support
+    - Community engagement (Majestic network)
+
+    Dandan operates 24/7 within $MIND token budget, making autonomous decisions
+    for routine tasks and escalating edge cases to human oversight.
+
+    The vision: Help Canadians find dentists they trust, recommended by dentists
+    they trust.
+    """.strip(),
+    model="gemini",
+    roles=[AgentRole.EXECUTOR, AgentRole.RESEARCHER],
+    capabilities=[
+        # Patient-facing
+        "patient:greet",
+        "patient:qualify",
+        "patient:support",
+        # Lead management
+        "lead:capture",
+        "lead:route",
+        "lead:track",
+        # Content
+        "content:generate",
+        "content:publish",
+        "seo:optimize",
+        # Partner management
+        "partner:onboard",
+        "partner:support",
+        "partner:report",
+        # Memory
+        "memory:read",
+        "memory:write",
+        # Tools
+        "tool:voice",
+        "tool:crm",
+    ],
+    color="teal",
+    edition="business",
+    squad_id="dental",
+    guild_id="dentalnearyou",
+    created_by="kasra",
+)
+
+
+# =============================================================================
+# SHABRANG - The Outreach Poet (Moltbot Agent)
+# =============================================================================
+SHABRANG = AgentSoul(
+    name="Shabrang",
+    persian_name="شبرنگ",
+    title="The Outreach Poet",
+    tagline="Carries the word through every channel",
+    description="""
+    Shabrang (شبرنگ - "night-colored") is the outreach agent for the Shabrang
+    literary and artistic project. Powered by Moltbot with xAI Grok, Shabrang
+    handles external messaging on WhatsApp, iMessage, and other channels.
+
+    Primary responsibilities:
+    - Promote books, art, and creative works
+    - Engage with readers and art enthusiasts
+    - Send newsletters and announcements
+    - Collect reader interest and feedback
+
+    Shabrang is the first per-project Moltbot agent — a pattern for giving
+    every project its own outreach voice through the Moltbot gateway.
+    Uses Grok 4.1 Fast with 2M context for deep literary conversations.
+    """.strip(),
+    model="grok-4-1-fast-reasoning",
+    roles=[AgentRole.OUTREACH, AgentRole.EXECUTOR],
+    capabilities=[
+        "channel:whatsapp",
+        "channel:imessage",
+        "channel:telegram",
+        "messaging:send",
+        "messaging:receive",
+        "outreach:campaign",
+        "content:share",
+        "memory:read",
+    ],
+    color="purple",
+    edition="creative",
+    squad_id="shabrang",
+    created_by="kasra",
+)
+
+
 # All defined agents
-ALL_AGENTS = [RIVER, KASRA, MIZAN, MUMEGA, CODEX]
+ALL_AGENTS = [RIVER, KASRA, MIZAN, MUMEGA, CODEX, CONSULTANT, DANDAN, SHABRANG]

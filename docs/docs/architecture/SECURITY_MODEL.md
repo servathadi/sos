@@ -593,6 +593,19 @@ Secrets require explicit capability grants:
 
 ---
 
+## 6.5 Telemetry & Secret Hygiene
+
+- Telemetry is disabled by default (`telemetry_enabled=false` in all editions).
+- Secret scanning should run via `sos doctor` to detect accidental key material in repo files.
+
+## 6.6 Runtime Hardening
+
+Use `docker-compose.hardened.yml` as an overlay to enforce:
+- `no-new-privileges`
+- dropped Linux capabilities
+- tmpfs `/tmp`
+- read-only root + explicit write paths (when applicable)
+
 ## 6. Audit Logging
 
 All security-relevant events MUST be logged to an append-only audit log.
@@ -611,6 +624,13 @@ All security-relevant events MUST be logged to an append-only audit log.
 | `secret.accessed` | Secret was accessed |
 | `policy.violation` | Policy violation detected |
 
+### Tool Execution Audit
+Tools service writes append-only audit logs for every tool call:
+- `SOS_HOME/data/audit/tools.jsonl`
+- `SOS_HOME/data/ledger/audit.jsonl` (ledger-aligned trail)
+
+Each record includes `timestamp`, `tool`, `ok`, `error`, and `args`.
+
 ### Audit Log Format
 
 ```json
@@ -626,6 +646,17 @@ All security-relevant events MUST be logged to an append-only audit log.
   "outcome": "success"
 }
 ```
+
+---
+
+## 7. Pairing & Allowlists
+
+Pairing is required for DM channels with `dmPolicy=pairing`. The flow:
+1) Identity service issues a short-lived pairing code for `(channel, sender_id, agent_id)`.
+2) Approver approves the code → allowlist entry is created.
+3) A scoped capability is issued for the sender (`tool:execute`, resource `channel:<channel>:sender:<id>`).
+
+Allowlists are stored in the Identity database and exposed via the Identity API.
 
 ---
 

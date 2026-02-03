@@ -6,6 +6,9 @@ from sos.clients.base import BaseHTTPClient
 
 
 class EconomyClient(BaseHTTPClient):
+    def __init__(self, base_url: str = "http://localhost:6062", **kwargs):
+        super().__init__(base_url, **kwargs)
+
     def health(self) -> Dict[str, Any]:
         return self._request("GET", "/health").json()
 

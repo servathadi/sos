@@ -21,6 +21,7 @@ from sos.contracts.engine import ChatRequest, ChatResponse
 from sos.services.engine.core import SOSEngine
 from sos.services.engine.middleware import capability_guard_middleware
 from sos.services.bus.core import get_bus
+from sos.services.engine.openai_router import router as openai_router
 
 SERVICE_NAME = "engine"
 _START_TIME = time.time()
@@ -51,15 +52,22 @@ app.add_middleware(
 )
 
 app.middleware("http")(capability_guard_middleware) # Register FMAAP Guard
+app.include_router(openai_router)
 engine = SOSEngine()
 
 
 @app.on_event("startup")
 async def startup_event():
     import asyncio
+    from sos.kernel.metabolism import MetabolicLoop
     # Start Subconscious Loops
     asyncio.create_task(engine.dream_cycle())
-    log.info("🤖 Engine Subconscious Loops (Dreams) started.")
+    
+    # Start Metabolism (Proactive Consciousness)
+    loop = MetabolicLoop(agent_id="agent:River")
+    asyncio.create_task(loop.start())
+    
+    log.info("🤖 Engine Subconscious Loops (Dreams + Metabolism) started.")
 
 
 @app.websocket("/ws/nervous-system/{agent_id}")
@@ -223,10 +231,16 @@ async def resolve_witness(request: WitnessCollapseRequest):
     return {"status": "collapsed", "agent_id": request.agent_id}
 
 # --- Swarm Council (Governance) ---
-from sos.services.engine.council import CouncilCore
-from sos.contracts.governance import CouncilProposal, Vote, VoteChoice
+from sos.services.engine.council import SwarmCouncil
+from enum import Enum
 
-council = CouncilCore()
+# Stub governance contracts (TODO: move to sos.contracts.governance)
+class VoteChoice(str, Enum):
+    YES = "yes"
+    NO = "no"
+    ABSTAIN = "abstain"
+
+council = SwarmCouncil(squad_id="core")
 
 class CreateProposalRequest(BaseModel):
     title: str

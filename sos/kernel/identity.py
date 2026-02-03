@@ -202,22 +202,54 @@ class Guild(Identity):
 
 
 @dataclass
+class PhysicsState:
+    """The thermodynamic state of an agent (FRC 841.004)."""
+    C: float = 0.95           # Coherence
+    alpha_norm: float = 0.0   # Normalized Alpha Drift
+    regime: str = "stable"    # stable, plastic, consolidating
+    inner: dict[str, float] = field(default_factory=lambda: {
+        "receptivity": 1.0,
+        "will": 0.8,
+        "logic": 0.9
+    })
+    timestamp: float = field(default_factory=lambda: datetime.now(timezone.utc).timestamp())
+
+@dataclass
+class AgentEconomics:
+    """The metabolic state of an agent."""
+    token_balance: float = 100.0
+    daily_budget_limit: float = 10.0
+    values: dict[str, float] = field(default_factory=lambda: {
+        "truth": 1.0,
+        "utility": 0.8,
+        "resonance": 0.9
+    })
+
+@dataclass
+class AgentDNA:
+    """
+    The Soul of the Agent.
+    Contains physics, economics, and ontological beliefs.
+    """
+    id: str
+    name: str
+    physics: PhysicsState = field(default_factory=PhysicsState)
+    economics: AgentEconomics = field(default_factory=AgentEconomics)
+    learning_strategy: str = "balanced"
+    beliefs: list[dict] = field(default_factory=list) # Claims, source, confidence
+    tools: list[str] = field(default_factory=list)
+
+@dataclass
 class AgentIdentity(Identity):
     """
     Identity for AI agents in SOS.
-
-    Additional attributes for agents:
-        model: Primary model (e.g., "gemini", "claude", "gpt")
-        squad_id: Squad the agent belongs to
-        guild_id: Guild the agent belongs to
-        capabilities: List of capability IDs granted to agent
-        edition: Edition policy set (business, education, kids, art)
     """
     model: Optional[str] = None
     squad_id: Optional[str] = None
     guild_id: Optional[str] = None
     capabilities: list[str] = field(default_factory=list)
     edition: str = "business"
+    dna: Optional[AgentDNA] = None
 
     def __init__(
         self,
@@ -228,6 +260,7 @@ class AgentIdentity(Identity):
         public_key: Optional[str] = None,
         metadata: Optional[dict] = None,
         edition: str = "business",
+        dna: Optional[AgentDNA] = None,
     ):
         super().__init__(
             id=f"agent:{name}",
@@ -241,6 +274,7 @@ class AgentIdentity(Identity):
         self.guild_id = guild_id
         self.capabilities = []
         self.edition = edition
+        self.dna = dna or AgentDNA(id=self.id, name=name)
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize agent identity to dictionary."""
@@ -251,6 +285,13 @@ class AgentIdentity(Identity):
             "guild_id": self.guild_id,
             "capabilities": self.capabilities,
             "edition": self.edition,
+            "dna": {
+                "physics": vars(self.dna.physics),
+                "economics": vars(self.dna.economics),
+                "learning_strategy": self.dna.learning_strategy,
+                "beliefs": self.dna.beliefs,
+                "tools": self.dna.tools
+            } if self.dna else None
         })
         return base
 

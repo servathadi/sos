@@ -3,35 +3,106 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "sos"
+name = "mumega"
 version = "0.1.0"
-description = "SovereignOS (SOS) - A sovereign, modular operating system for agents and humans."
-readme = { file = "docs/README.md", content-type = "text/markdown" }
+description = "Sovereign Operating System for AI Agents - Multi-model, autonomous, edge-native"
+readme = "README.md"
 requires-python = ">=3.10"
-authors = [{ name = "Mumega Collective" }]
-dependencies = [
-  "fastapi>=0.100",
-  "httpx>=0.24",
-  "google-genai>=0.1.0",
-  "pydantic>=2.0",
-  "PyNaCl>=1.5",
-  "uvicorn>=0.20",
-  "google-auth>=2.22.0",
-  "google-auth-oauthlib>=1.1.0",
-  "google-api-python-client>=2.97.0",
-  "duckduckgo-search>=3.8.5",
-  "solana>=0.30.2",
-  "solders>=0.18.0",
-  "base58>=2.1.1",
+license = {text = "MIT"}
+authors = [{ name = "Mumega Collective", email = "hello@mumega.com" }]
+keywords = ["ai", "agents", "llm", "autonomous", "sovereign", "multi-agent"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 
+dependencies = [
+    "fastapi>=0.100",
+    "httpx>=0.24",
+    "pydantic>=2.0",
+    "uvicorn>=0.20",
+    "PyNaCl>=1.5",
+]
+
+[project.optional-dependencies]
+# Core LLM providers
+gemini = ["google-genai>=1.0.0"]
+openai = ["openai>=1.0.0"]
+all-llms = ["google-genai>=1.0.0", "openai>=1.0.0"]
+
+# Storage backends
+cloudflare = ["httpx>=0.24"]
+local = ["chromadb>=0.4", "sentence-transformers>=2.2"]
+
+# Economy/blockchain
+solana = ["solana>=0.30.2", "solders>=0.18.0", "base58>=2.1.1"]
+
+# Full install
+full = [
+    "google-genai>=1.0.0",
+    "openai>=1.0.0",
+    "chromadb>=0.4",
+    "sentence-transformers>=2.2",
+    "solana>=0.30.2",
+    "solders>=0.18.0",
+    "base58>=2.1.1",
+    "redis>=4.0",
+    "prometheus-client>=0.17",
+]
+
+# Development
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21",
+    "pytest-cov>=4.0",
+    "black>=23.0",
+    "ruff>=0.1",
+    "mypy>=1.0",
+]
+
+[project.urls]
+Homepage = "https://mumega.com"
+Documentation = "https://docs.mumega.com"
+Repository = "https://github.com/servathadi/sos"
+Issues = "https://github.com/servathadi/sos/issues"
+
 [project.scripts]
-sos-engine = "sos.services.engine.__main__:main"
-sos-memory = "sos.services.memory.__main__:main"
-sos-economy = "sos.services.economy.__main__:main"
-sos-tools = "sos.services.tools.__main__:main"
+# Main CLI
+mumega = "sos.cli:main"
+
+# Service runners
+mumega-engine = "sos.services.engine.__main__:main"
+mumega-memory = "sos.services.memory.__main__:main"
+mumega-economy = "sos.services.economy.__main__:main"
+mumega-tools = "sos.services.tools.__main__:main"
+mumega-autonomy = "sos.services.autonomy.__main__:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["sos*"]
 
+[tool.setuptools.package-data]
+sos = ["py.typed"]
+
+[tool.black]
+line-length = 100
+target-version = ["py310", "py311", "py312"]
+
+[tool.ruff]
+line-length = 100
+select = ["E", "F", "I", "W"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_ignores = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests", "sos/tests"]

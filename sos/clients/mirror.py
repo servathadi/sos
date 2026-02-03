@@ -5,18 +5,6 @@ import httpx
 from typing import Optional, Dict, List
 from datetime import datetime
 
-from sos.clients.base import BaseHTTPClient
-from sos.observability.logging import get_logger
-
-log = get_logger("client_mirror")
-
-
-import logging
-import os
-import httpx
-from typing import Optional, Dict, List
-from datetime import datetime
-
 from sos.observability.logging import get_logger
 
 log = get_logger("client_mirror")
@@ -29,7 +17,7 @@ class MirrorClient:
     """
     
     def __init__(self, base_url: str = "https://mumega.com/mirror", agent_id: str = "antigravity"):
-        self.base_url = base_url
+        self.base_url = base_url.rstrip("/")
         self.agent_id = agent_id
         
         # Retrieve key from env
@@ -56,9 +44,9 @@ class MirrorClient:
                 raise
 
     async def check_connection(self) -> bool:
-        """Health check (GET /)."""
+        """Health check (GET /health)."""
         try:
-            resp = await self._request("GET", "/")
+            resp = await self._request("GET", "/health")
             if resp.status_code == 200:
                 log.info(f"✓ Connected to Mirror Health Check: {resp.text}")
                 return True

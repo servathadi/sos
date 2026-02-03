@@ -82,12 +82,72 @@ If a message cannot be delivered to an agent's inbox (e.g., parsing error, agent
     *   To Subscribe to `squad:X`: Must hold `Capability(squad:X, READ)`.
     *   Direct messages are always allowed but rate-limited.
 
-## 7. Implementation Plan
+## 7. Gateway RPC Control Plane (Tools + Channels)
+
+SOS exposes a JSON-RPC control plane for tool execution and channel routing. This is the *gateway* interface used by adapters, UIs, and external controllers.
+
+### Transport
+* **WS/HTTP JSON-RPC 2.0**
+* **Auth:** `Authorization: Bearer <capability-token>` (no querystring tokens)
+* **Default bind:** `127.0.0.1` (explicit allowlist required for remote bind)
+
+### Request Envelope
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req_uuid_v4",
+  "method": "tools.execute",
+  "params": {
+    "tool": "web.search",
+    "args": { "query": "sos capability tokens" },
+    "agent_id": "agent:river"
+  }
+}
+```
+
+### Response Envelope
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req_uuid_v4",
+  "result": {
+    "ok": true,
+    "output": "...",
+    "duration_ms": 812
+  }
+}
+```
+
+### Error Envelope (examples)
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req_uuid_v4",
+  "error": {
+    "code": 40101,
+    "message": "capability_required",
+    "data": { "action": "tool:execute", "resource": "tool:web.search" }
+  }
+}
+```
+
+### Standard Error Codes
+* `40101` capability_required
+* `40102` capability_invalid
+* `40103` capability_expired
+* `40301` capability_denied
+* `40401` tool_not_found
+* `42901` rate_limited
+* `50001` tool_error
+* `50002` gateway_error
+* `50301` tool_unavailable
+
+## 8. Implementation Plan
 
 1.  **Core Service:** Redis-backed implementation (`sos.services.bus`).
 2.  **SDK Support:** `client.bus.subscribe()` / `client.bus.publish()`.
 3.  **CLI Tool:** `sos bus monitor` (like Wireshark for agents).
 
-## 8. Scalability
+## 9. Scalability
 *   **Horizontal:** Redis Cluster for channel sharding.
 *   **Vertical:** AsyncIO implementation in Python SDK to handle 10k+ msgs/sec.

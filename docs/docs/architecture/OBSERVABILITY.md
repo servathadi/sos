@@ -380,6 +380,16 @@ services:
 
 ---
 
+## 4. Audit Logs
+
+Security-relevant events are append-only. Tools service writes:
+- `SOS_HOME/data/audit/tools.jsonl`
+- `SOS_HOME/data/ledger/audit.jsonl`
+
+Each entry includes timestamp, tool name, status, and args (avoid secrets).
+
+---
+
 ## Implementation Checklist
 
 - [ ] JSON structured logging to stdout/stderr

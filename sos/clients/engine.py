@@ -11,6 +11,9 @@ _CHAT_RESPONSE_FIELDS = {f.name for f in fields(ChatResponse)}
 
 
 class EngineClient(BaseHTTPClient):
+    def __init__(self, base_url: str = "http://localhost:6060", **kwargs):
+        super().__init__(base_url, **kwargs)
+
     def health(self) -> Dict[str, Any]:
         return self._request("GET", "/health").json()
 

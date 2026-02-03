@@ -17,7 +17,9 @@ SovereignOS (SOS) is a sovereign, modular operating system for agents and humans
 |----------|-------------|
 | [OBSERVABILITY.md](./OBSERVABILITY.md) | Logging, metrics, and distributed tracing standards |
 | [SECURITY_MODEL.md](./SECURITY_MODEL.md) | Capability-based access, plugin trust, sandboxing |
+| [PLUGIN_MODEL.md](./PLUGIN_MODEL.md) | Plugin manifest schema, trust levels, loader behavior |
 | [STATE_MACHINES.md](./STATE_MACHINES.md) | Task lifecycle, onboarding flow, transaction states |
+| [OPENCLAW_LEARNINGS.md](./OPENCLAW_LEARNINGS.md) | Design learnings to apply to SOS |
 
 ## Strategy (by Codex)
 
@@ -124,41 +126,46 @@ python -m pip install -e . --no-deps
 
 ## Run Services (v0.1)
 
-### Engine Service
+### Engine Service (Port 6060)
 
 ```bash
+# Default: http://localhost:6060
 PYTHONPATH=/home/mumega/SOS python -m sos.services.engine
-# or: sos-engine
-
-# Verify
-curl -s http://127.0.0.1:8000/health | jq
 ```
 
-### Memory Service
+### Memory Service (Mirror - Port 7070)
 
 ```bash
+# Default: http://localhost:7070
 PYTHONPATH=/home/mumega/SOS python -m sos.services.memory
-# or: sos-memory
-curl -s http://127.0.0.1:8001/health | jq
 ```
 
-### Economy Service
+### Economy Service (Port 6062)
 
 ```bash
+# Default: http://localhost:6062
 PYTHONPATH=/home/mumega/SOS python -m sos.services.economy
-# or: sos-economy
-curl -s http://127.0.0.1:8002/health | jq
 ```
 
-### Tools Service
+### Tools Service (Port 6063)
 
 ```bash
+# Default: http://localhost:6063
 PYTHONPATH=/home/mumega/SOS python -m sos.services.tools
-# or: sos-tools
-curl -s http://127.0.0.1:8003/health | jq
+```
 
-# Optional: enable v0.1 local tool execution
-SOS_TOOLS_EXECUTION_ENABLED=1 PYTHONPATH=/home/mumega/SOS python -m sos.services.tools
+### Identity Service (Port 6064)
+
+```bash
+# Default: http://localhost:6064
+PYTHONPATH=/home/mumega/SOS python -m sos.services.identity
+```
+
+### Voice Service (Port 6065)
+
+```bash
+# Default: http://localhost:6065
+PYTHONPATH=/home/mumega/SOS python -m sos.services.voice
 ```
 
 ## MCP (Tools Service)

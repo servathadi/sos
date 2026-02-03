@@ -30,7 +30,7 @@ class QNFTMinter:
         self.agent_name = "sos_agent" # TODO: get from Identity/DNA
         
         # Use SOS Data Directory
-        self.data_dir = Path(self.config.data_dir)
+        self.data_dir = self.config.paths.data_dir
         self.output_dir = self.data_dir / "qnft_minting"
         self.output_dir.mkdir(parents=True, exist_ok=True)
         

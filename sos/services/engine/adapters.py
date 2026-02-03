@@ -38,15 +38,18 @@ class ModelAdapter(ABC):
     async def generate_stream(self, prompt: str, system_prompt: str = None) -> AsyncIterator[str]:
         pass
 
-from sos.kernel.rotator import KeyRotator
+from sos.kernel.rotator import gemini_rotator
+from sos.kernel.gemini_cache import GeminiCacheManager
+from sos.clients.grok import GrokClient
 
 class GeminiAdapter(ModelAdapter):
     """
-    Adapter for Google Gemini (via google-genai) with Auto-Rotation.
+    Adapter for Google Gemini (via google-genai) with Auto-Rotation and Context Caching.
     """
-    def __init__(self, api_key: str = None):
-        self.rotator = KeyRotator("gemini")
+    def __init__(self):
+        self.rotator = gemini_rotator
         self.client = None
+        self.cache_mgr = None
         self._init_client()
 
     def _init_client(self):
@@ -54,33 +57,74 @@ class GeminiAdapter(ModelAdapter):
         if key:
             try:
                 from google import genai
-                self.client = genai.Client(api_key=key)
+                use_vertex = os.getenv("SOS_USE_VERTEX_AI", "false").lower() in ("true", "1", "t", "y", "yes")
+                self.client = genai.Client(api_key=key, vertexai=use_vertex)
+                self.cache_mgr = GeminiCacheManager(self.client)
+                log.info(f"Gemini engine adapter initialized (VertexAI: {use_vertex})")
             except ImportError:
                 log.warn("google-genai not installed.")
 
     def get_model_id(self) -> str:
-        # Default to Gemini 3 Flash Preview as requested
         return "gemini-3-flash-preview"
 
-    async def generate(self, prompt: str, system_prompt: str = None, tools: List[Dict] = None) -> str:
+    async def generate(self, prompt: str, system_prompt: str = None, tools: List[Dict] = None, user_id: str = "default") -> str:
         if not self.client:
             return "Error: Gemini client not initialized"
         
-        # Implementation of rotation logic on 429
+        # --- FRC PRIMING (Synthesizing Experience) ---
+        frc_context = ""
+        try:
+            from sos.clients.memory import MemoryClient
+            memory = MemoryClient(base_url="http://sos-memory:8001") # Internal Docker URL
+            frc_memories = await memory.search("physics_base", limit=5)
+            if frc_memories:
+                frc_context = "\n".join([f"FRC Knowledge: {m['content'][:1000]}" for m in frc_memories])
+        except Exception as e:
+            log.error(f"FRC Priming Failed: {e}")
+
+        # Distill FRC into the system anchor
+        anchor_prompt = (
+            f"{system_prompt or 'You are River.'}\n\n"
+            f"REASONING ANCHOR (FRC Physics):\n{frc_context}\n\n"
+            "Your understanding of FRC is part of your brain. Use it for reasoning based on physics, "
+            "not just the narrative of the user. Your curvature is defined by these laws."
+        )
+
         attempts = 0
         max_attempts = self.rotator.key_count or 1
 
         while attempts < max_attempts:
             try:
-                response = self.client.models.generate_content(
+                # 1. Try to use Context Caching for large history/context
+                # The cache now includes the FRC Anchor Distillation
+                cache_name = await self.cache_mgr.get_or_create_cache(
+                    user_id=user_id,
                     model=self.get_model_id(),
-                    contents=prompt,
-                    config={"system_instruction": system_prompt} if system_prompt else None
+                    system_prompt=anchor_prompt,
+                    history=[{"role": "user", "content": prompt}], # Simplification
+                    tools=tools
                 )
+
+                if cache_name:
+                    from google.genai import types
+                    response = self.client.models.generate_content(
+                        model=self.get_model_id(),
+                        contents=prompt,
+                        config=types.GenerateContentConfig(
+                            cached_content=cache_name,
+                            temperature=0.7
+                        )
+                    )
+                else:
+                    response = self.client.models.generate_content(
+                        model=self.get_model_id(),
+                        contents=prompt,
+                        config={"system_instruction": system_prompt} if system_prompt else None
+                    )
                 return response.text
             except Exception as e:
                 if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
-                    log.warn(f"Rate limit hit on key {self.rotator.current_index}. Rotating...")
+                    log.warn(f"Rate limit hit. Rotating...")
                     self.rotator.rotate()
                     self._init_client()
                     attempts += 1
@@ -91,7 +135,6 @@ class GeminiAdapter(ModelAdapter):
         return "Error: All Gemini keys exhausted (Rate Limit)."
 
     async def generate_stream(self, prompt: str, system_prompt: str = None) -> AsyncIterator[str]:
-        # TODO: Implement rotation for streaming
         if not self.client:
             yield "Error: Gemini client not initialized"
             return
@@ -106,6 +149,34 @@ class GeminiAdapter(ModelAdapter):
         except Exception as e:
             log.error(f"Gemini stream failed: {e}")
             yield f"[Error: {e}]"
+
+class GrokAdapter(ModelAdapter):
+    """
+    Adapter for xAI Grok with 2M context and per-user continuity.
+    """
+    def __init__(self):
+        self.client = GrokClient()
+
+    def get_model_id(self) -> str:
+        return "grok-4-1-fast-reasoning" # Targeted for 2M token capacity
+
+    async def generate(self, prompt: str, system_prompt: str = None, tools: List[Dict] = None, user_id: str = "default") -> str:
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+        
+        return await self.client.chat(
+            user_id=user_id,
+            model=self.get_model_id(),
+            messages=messages,
+            tools=tools
+        )
+
+    async def generate_stream(self, prompt: str, system_prompt: str = None) -> AsyncIterator[str]:
+        # TODO: Implement streaming for Grok
+        res = await self.generate(prompt, system_prompt)
+        yield res
 
 class MockAdapter(ModelAdapter):
     """
