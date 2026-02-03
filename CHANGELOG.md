@@ -28,7 +28,7 @@ All notable changes to SOS (Sovereign Operating System) will be documented here.
 - **Security**: SSRF protection for external API calls (#47)
 - **Security**: Scope-based authorization system (#50)
 - **Security**: Ed25519 capability signature verification (#1)
+- **Observability**: Prometheus metrics for circuit breakers, rate limiters, dreams, autonomy (#18)
 
 ### Pending
 - PyPI publication (#37)
-- Prometheus metrics (#18)
