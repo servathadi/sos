@@ -24,8 +24,11 @@ All notable changes to SOS (Sovereign Operating System) will be documented here.
 
 ## [Unreleased]
 
+### Added
+- **Security**: SSRF protection for external API calls (#47)
+- **Security**: Scope-based authorization system (#50)
+- **Security**: Ed25519 capability signature verification (#1)
+
 ### Pending
 - PyPI publication (#37)
-- SSRF protection (#47)
-- Scope-based authorization (#50)
 - Prometheus metrics (#18)
