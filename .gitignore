@@ -4,15 +4,18 @@ node_modules/
 venv/
 __pycache__/
 *.pyc
+*.pyo
 
 # Builds
 dist/
 build/
 *.egg-info/
+.eggs/
 
 # Environment
 .env
-.env.local
+.env.*
+!.env.example
 .DS_Store
 
 # Logs
@@ -22,7 +25,30 @@ logs/
 # IDEs
 .vscode/
 .idea/
+*.swp
+*.swo
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+.data/
+data/**/*.db
 
 # System
 .sos/
-data/*.db
+.cache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+
+# OS
+Thumbs.db
+*~
+
+# Secrets (never commit)
+*.pem
+*.key
+credentials.json
