@@ -1,0 +1,29 @@
+[Unit]
+Description=SOS Gateway MCP Server (OAuth + SSE)
+After=network.target sos-engine.service
+
+[Service]
+Type=simple
+User=mumega
+Group=mumega
+WorkingDirectory=/home/mumega/SOS
+Environment=PYTHONPATH=/home/mumega/SOS
+Environment=SOS_MCP_PORT=8002
+Environment=SOS_MCP_BASE_URL=https://mcp.mumega.com
+EnvironmentFile=-/home/mumega/SOS/.env
+
+ExecStart=/usr/bin/python3 -m sos.services.gateway.mcp
+
+Restart=always
+RestartSec=5
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=sos-gateway-mcp
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
