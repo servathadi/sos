@@ -173,10 +173,19 @@ class GrokAdapter(ModelAdapter):
             tools=tools
         )
 
-    async def generate_stream(self, prompt: str, system_prompt: str = None) -> AsyncIterator[str]:
-        # TODO: Implement streaming for Grok
-        res = await self.generate(prompt, system_prompt)
-        yield res
+    async def generate_stream(self, prompt: str, system_prompt: str = None, user_id: str = "default") -> AsyncIterator[str]:
+        """Stream responses from Grok."""
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+
+        async for chunk in self.client.chat_stream(
+            user_id=user_id,
+            model=self.get_model_id(),
+            messages=messages,
+        ):
+            yield chunk
 
 class MockAdapter(ModelAdapter):
     """

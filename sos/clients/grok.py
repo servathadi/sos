@@ -1,7 +1,7 @@
 
 import os
 import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, AsyncIterator
 from openai import AsyncOpenAI
 import uuid
 
@@ -52,3 +52,38 @@ class GrokClient:
         except Exception as e:
             logger.error(f"Grok chat failed: {e}")
             return f"Error: {str(e)}"
+
+    async def chat_stream(
+        self,
+        user_id: str,
+        model: str,
+        messages: List[Dict],
+    ) -> AsyncIterator[str]:
+        """
+        Stream chat completions from Grok.
+
+        Yields text chunks as they arrive from the API.
+        """
+        if not self.client:
+            yield "Error: Grok API key not configured."
+            return
+
+        try:
+            conv_id = self._get_conv_id(user_id)
+
+            stream = await self.client.chat.completions.create(
+                model=model,
+                messages=messages,
+                stream=True,
+                extra_headers={
+                    "x-grok-conv-id": conv_id
+                }
+            )
+
+            async for chunk in stream:
+                if chunk.choices and chunk.choices[0].delta.content:
+                    yield chunk.choices[0].delta.content
+
+        except Exception as e:
+            logger.error(f"Grok stream failed: {e}")
+            yield f"[Error: {str(e)}]"

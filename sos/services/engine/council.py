@@ -1,4 +1,3 @@
-
 """
 SOS Swarm Council - Cellular Governance Module.
 
@@ -12,23 +11,25 @@ Scalability:
 - No central bottleneck; decision logic is distributed.
 """
 
-import asyncio
-import json
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone
-from enum import Enum
 
 from sos.kernel import Message, MessageType
 from sos.services.bus.core import get_bus
 from sos.observability.logging import get_logger
+from sos.contracts.governance import (
+    Council,
+    Proposal,
+    ProposalStatus,
+    Vote,
+    VoteChoice,
+    QuorumConfig,
+    AlreadyVotedError,
+    ProposalNotFoundError,
+    ProposalNotActiveError,
+)
 
 log = get_logger("swarm_council")
-
-class ProposalStatus(Enum):
-    ACTIVE = "active"
-    PASSED = "passed"
-    REJECTED = "rejected"
-    EXPIRED = "expired"
 
 class SwarmCouncil:
     """
