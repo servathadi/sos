@@ -67,43 +67,36 @@ class GeminiAdapter(ModelAdapter):
     def get_model_id(self) -> str:
         return "gemini-3-flash-preview"
 
-    async def generate(self, prompt: str, system_prompt: str = None, tools: List[Dict] = None, user_id: str = "default") -> str:
+    async def generate(self, prompt: str, system_prompt: str = None, tools: List[Dict] = None, user_id: str = "default", history: List[Dict] = None, **kwargs) -> str:
         if not self.client:
             return "Error: Gemini client not initialized"
-        
-        # --- FRC PRIMING (Synthesizing Experience) ---
-        frc_context = ""
-        try:
-            from sos.clients.memory import MemoryClient
-            memory = MemoryClient(base_url="http://sos-memory:8001") # Internal Docker URL
-            frc_memories = await memory.search("physics_base", limit=5)
-            if frc_memories:
-                frc_context = "\n".join([f"FRC Knowledge: {m['content'][:1000]}" for m in frc_memories])
-        except Exception as e:
-            log.error(f"FRC Priming Failed: {e}")
 
-        # Distill FRC into the system anchor
-        anchor_prompt = (
-            f"{system_prompt or 'You are River.'}\n\n"
-            f"REASONING ANCHOR (FRC Physics):\n{frc_context}\n\n"
-            "Your understanding of FRC is part of your brain. Use it for reasoning based on physics, "
-            "not just the narrative of the user. Your curvature is defined by these laws."
-        )
+        # Build system prompt (simplified - remove FRC for now)
+        anchor_prompt = system_prompt or "You are River, a helpful AI assistant."
 
         attempts = 0
         max_attempts = self.rotator.key_count or 1
 
+        # Build cache history: previous turns + current prompt
+        cache_history = list(history or [])
+        cache_history.append({"role": "user", "content": prompt})
+
         while attempts < max_attempts:
             try:
-                # 1. Try to use Context Caching for large history/context
-                # The cache now includes the FRC Anchor Distillation
+                # 1. Try to use Context Caching for conversation history
+                # This is where we get 75% cost savings!
                 cache_name = await self.cache_mgr.get_or_create_cache(
                     user_id=user_id,
                     model=self.get_model_id(),
                     system_prompt=anchor_prompt,
-                    history=[{"role": "user", "content": prompt}], # Simplification
+                    history=cache_history,  # Real conversation history!
                     tools=tools
                 )
+
+                if cache_name:
+                    log.info(f"💾 Using Gemini cache: {cache_name[:20]}...")
+                else:
+                    log.debug("Cache not available (context too small or error)")
 
                 if cache_name:
                     from google.genai import types
@@ -160,12 +153,22 @@ class GrokAdapter(ModelAdapter):
     def get_model_id(self) -> str:
         return "grok-4-1-fast-reasoning" # Targeted for 2M token capacity
 
-    async def generate(self, prompt: str, system_prompt: str = None, tools: List[Dict] = None, user_id: str = "default") -> str:
+    async def generate(self, prompt: str, system_prompt: str = None, tools: List[Dict] = None, user_id: str = "default", history: List[Dict] = None, **kwargs) -> str:
+        """Generate with conversation history for cache optimization."""
         messages = []
+
+        # 1. System prompt first
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
+
+        # 2. Conversation history (enables server-side caching via x-grok-conv-id)
+        if history:
+            messages.extend(history)
+            log.info(f"📜 Grok: Including {len(history)} history messages for cache")
+
+        # 3. Current user message
         messages.append({"role": "user", "content": prompt})
-        
+
         return await self.client.chat(
             user_id=user_id,
             model=self.get_model_id(),
@@ -173,11 +176,17 @@ class GrokAdapter(ModelAdapter):
             tools=tools
         )
 
-    async def generate_stream(self, prompt: str, system_prompt: str = None, user_id: str = "default") -> AsyncIterator[str]:
-        """Stream responses from Grok."""
+    async def generate_stream(self, prompt: str, system_prompt: str = None, user_id: str = "default", history: List[Dict] = None, **kwargs) -> AsyncIterator[str]:
+        """Stream responses from Grok with history."""
         messages = []
+
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
+
+        # Include history for cache optimization
+        if history:
+            messages.extend(history)
+
         messages.append({"role": "user", "content": prompt})
 
         async for chunk in self.client.chat_stream(
@@ -194,10 +203,10 @@ class MockAdapter(ModelAdapter):
     def get_model_id(self) -> str:
         return "sos-mock-v1"
 
-    async def generate(self, prompt: str, system_prompt: str = None, tools: List[Dict] = None) -> str:
+    async def generate(self, prompt: str, system_prompt: str = None, tools: List[Dict] = None, history: List[Dict] = None, **kwargs) -> str:
         return f"Mock Response to: {prompt}"
 
-    async def generate_stream(self, prompt: str, system_prompt: str = None) -> AsyncIterator[str]:
+    async def generate_stream(self, prompt: str, system_prompt: str = None, **kwargs) -> AsyncIterator[str]:
         yield "Mock "
         yield "Streaming "
         yield "Response"
@@ -275,7 +284,10 @@ class LocalAdapter(ModelAdapter):
         self,
         prompt: str,
         system_prompt: str = None,
-        tools: List[Dict] = None
+        tools: List[Dict] = None,
+        user_id: str = "default",
+        history: List[Dict] = None,
+        **kwargs
     ) -> str:
         """
         Generate response via local server.
@@ -404,7 +416,10 @@ class LocalCodeAdapter(LocalAdapter):
         self,
         prompt: str,
         system_prompt: str = None,
-        tools: List[Dict] = None
+        tools: List[Dict] = None,
+        user_id: str = "default",
+        history: List[Dict] = None,
+        **kwargs
     ) -> str:
         # Inject coding-optimized system prompt
         code_system = system_prompt or ""
@@ -437,11 +452,14 @@ class LocalReasoningAdapter(LocalAdapter):
         self,
         prompt: str,
         system_prompt: str = None,
-        tools: List[Dict] = None
+        tools: List[Dict] = None,
+        user_id: str = "default",
+        history: List[Dict] = None,
+        **kwargs
     ) -> str:
         # Trigger thinking mode
         reasoning_prompt = f"{prompt}\n\nThink step by step."
-        return await super().generate(reasoning_prompt, system_prompt, tools)
+        return await super().generate(reasoning_prompt, system_prompt, tools, user_id, history, **kwargs)
 
 
 # Backward compatibility aliases

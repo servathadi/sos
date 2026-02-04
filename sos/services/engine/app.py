@@ -185,6 +185,28 @@ async def health() -> Dict[str, Any]:
     }
 
 
+@app.get("/context/stats")
+async def context_stats():
+    """Get conversation context statistics for cache monitoring."""
+    return engine.context_manager.get_stats()
+
+
+@app.get("/context/{conversation_id}")
+async def get_context(conversation_id: str):
+    """Get specific conversation context details."""
+    ctx = engine.context_manager.get(conversation_id)
+    if not ctx:
+        return {"error": "Context not found", "conversation_id": conversation_id}
+    return {
+        "conversation_id": ctx.conversation_id,
+        "agent_id": ctx.agent_id,
+        "message_count": ctx.message_count,
+        "last_model": ctx.last_model,
+        "cache_stats": ctx.get_cache_stats(),
+        "window_size": len(ctx.recent_messages),
+    }
+
+
 @app.get("/metrics")
 async def metrics_endpoint():
     """Prometheus metrics endpoint with all SOS metrics."""

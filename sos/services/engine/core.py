@@ -1,6 +1,8 @@
 from typing import Any, AsyncIterator, Dict, List, Optional
 import asyncio
+import json
 import time
+from pathlib import Path
 
 from sos.contracts.engine import (
     ChatRequest,
@@ -31,6 +33,7 @@ from sos.services.engine.adapters import (
     MLXReasoningAdapter,
 )
 from sos.services.engine.resilience import ResilientRouter
+from sos.kernel.context import ContextManager
 
 class SOSEngine(EngineContract):
     """
@@ -39,7 +42,10 @@ class SOSEngine(EngineContract):
 
     def __init__(self, config: Optional[Config] = None):
         self.config = config or Config.load()
-        
+
+        # Initialize Conversation Context Manager (for cache optimization)
+        self.context_manager = ContextManager(default_window_size=10)
+
         # Initialize Service Clients
         self.memory = MemoryClient(self.config.memory_url, timeout_seconds=60.0)
         self.tools = ToolsClient(self.config.tools_url)
@@ -196,43 +202,56 @@ class SOSEngine(EngineContract):
 
     async def chat(self, request: ChatRequest) -> ChatResponse:
         """
-        Process a chat message.
+        Process a chat message with conversation context for cache optimization.
         """
-        log.info(f"Processing chat for agent {request.agent_id}", conversation_id=request.conversation_id)
+        # Generate conversation_id if not provided
+        conv_id = request.conversation_id or f"{request.agent_id}-{int(time.time())}"
+        log.info(f"Processing chat for agent {request.agent_id}", conversation_id=conv_id)
 
-        # 1. Retrieve Context (Memory)
-        context_str = ""
+        # 1. Get or Create Conversation Context (for cache optimization)
+        context = self.context_manager.get_or_create(conv_id, request.agent_id)
+        context.add_message(request.message)
+
+        # 2. Retrieve Memory Context
+        memory_context = ""
         try:
             if request.memory_enabled:
                 memories = await self.memory.search(request.message, limit=3)
                 if memories:
-                    context_str = "\n".join([f"- {m['content']}" for m in memories])
+                    memory_context = "\n".join([f"- {m['content']}" for m in memories])
                     log.info(f"🧠 Retrieved {len(memories)} memories for context.")
         except Exception as e:
             log.error(f"Memory retrieval failed: {e}")
 
-        # 2. Prepare Prompt
-        # --- SOVERGENT TASK CHECK ---
+        # 3. Sovereign Task Check
         task_context = ""
         if self.task_manager.is_complex_request(request.message):
             try:
                 task_id = await self.task_manager.create_task_from_request(request.message, request.agent_id)
-                task_context = f"\n[SYSTEM]: I have auto-spawned Task {task_id} to track this objective persistenty."
+                task_context = f"\n[SYSTEM]: I have auto-spawned Task {task_id} to track this objective."
                 log.info(f"Sovergent Task Active: {task_id}")
             except Exception as e:
                 log.error(f"Task spawning failed: {e}")
-        # ----------------------------
 
+        # 4. Build prompt with memory context
         full_prompt = request.message
-        if context_str or task_context:
-            full_prompt = f"Context:\n{context_str}\n{task_context}\n\nUser: {request.message}"
+        if memory_context or task_context:
+            full_prompt = f"Context:\n{memory_context}\n{task_context}\n\nUser: {request.message}"
 
-        # 3. Generate via Resilient Router (Circuit Breaker + Rate Limiting + Failover)
+        # 5. Get conversation history for LLM cache optimization
+        # This is the critical part - history enables 75-90% cost savings
+        conversation_history = context.get_history(limit=10)
+
+        # 6. Generate via Resilient Router with history
         response_text, model_used = await self.router.generate(
             prompt=full_prompt,
             preferred_model=request.model,
-            user_id=request.agent_id
+            user_id=request.agent_id,
+            history=conversation_history,  # Pass history for caching!
         )
+
+        # 7. Add response to context for future turns
+        context.add_response(response_text, model=model_used)
         
         # --- WITNESS PROTOCOL REALIZATION (Phase 3) ---
         witness_meta = {}
@@ -369,12 +388,67 @@ class SOSEngine(EngineContract):
 
     async def chat_stream(self, request: ChatRequest) -> AsyncIterator[str]:
         """
-        Stream response tokens.
+        Stream response tokens as SSE events.
+
+        Yields:
+            SSE-formatted events:
+            - data: {"chunk": "token"} for each token
+            - data: {"done": true, "model_used": "...", ...} at end
         """
-        response = await self.chat(request)
-        words = response.content.split(" ")
-        for word in words:
-            yield word + " "
+
+        log.info(f"Starting stream for agent {request.agent_id}", conversation_id=request.conversation_id)
+
+        # 1. Retrieve Context (Memory) - same as chat()
+        context_str = ""
+        try:
+            if request.memory_enabled:
+                memories = await self.memory.search(request.message, limit=3)
+                if memories:
+                    context_str = "\n".join([f"- {m['content']}" for m in memories])
+        except Exception as e:
+            log.error(f"Memory retrieval failed: {e}")
+
+        # 2. Prepare Prompt
+        full_prompt = request.message
+        if context_str:
+            full_prompt = f"Context:\n{context_str}\n\nUser: {request.message}"
+
+        # 3. Stream via Resilient Router
+        full_response = ""
+        model_used = "unknown"
+
+        try:
+            stream, model_used = await self.router.generate_stream(
+                prompt=full_prompt,
+                preferred_model=request.model,
+                user_id=request.agent_id
+            )
+
+            async for chunk in stream:
+                if chunk:
+                    full_response += chunk
+                    # Yield SSE event for each chunk
+                    event = {"chunk": chunk}
+                    yield f"data: {json.dumps(event)}\n\n"
+
+        except Exception as e:
+            log.error(f"Stream generation failed: {e}")
+            error_event = {"error": str(e)}
+            yield f"data: {json.dumps(error_event)}\n\n"
+
+        # 4. Store interaction in memory (async, don't block)
+        if request.memory_enabled and full_response:
+            asyncio.create_task(self._consolidate_memory(request.message, full_response, request.agent_id))
+
+        # 5. Final event with metadata
+        done_event = {
+            "done": True,
+            "model_used": model_used,
+            "agent_id": request.agent_id,
+            "conversation_id": request.conversation_id or "new",
+            "tokens_used": len(full_response.split()),  # Rough estimate
+        }
+        yield f"data: {json.dumps(done_event)}\n\n"
 
     async def execute_tool(self, request: ToolCallRequest) -> ToolCallResult:
         """

@@ -126,7 +126,7 @@ def cmd_doctor(args):
 
     services = [
         ("Engine", os.getenv("SOS_ENGINE_URL", "http://localhost:6060")),
-        ("Memory", os.getenv("SOS_MEMORY_URL", "http://localhost:7070")),
+        ("Memory", os.getenv("SOS_MEMORY_URL", "http://localhost:6061")),
         ("Economy", os.getenv("SOS_ECONOMY_URL", "http://localhost:6062")),
         ("Tools", os.getenv("SOS_TOOLS_URL", "http://localhost:6063")),
     ]
@@ -200,7 +200,7 @@ def cmd_status(args):
 
     services = [
         ("Engine", "http://localhost:6060/health"),
-        ("Memory", "http://localhost:7070/health"),
+        ("Memory", "http://localhost:6061/health"),
         ("Economy", "http://localhost:6062/health"),
         ("Tools", "http://localhost:6063/health"),
     ]
@@ -220,43 +220,28 @@ def cmd_status(args):
 
 
 def cmd_chat(args):
-    """Interactive chat."""
-    async def chat_loop():
-        from sos.services.engine.core import SOSEngine
-        from sos.contracts.engine import ChatRequest
+    """Interactive chat with pluggable frontend."""
+    from sos.cli.frontends import get_frontend, list_frontends, ChatConfig
 
-        engine = SOSEngine()
-        agent = args.agent or "river"
+    # Build config from args
+    config = ChatConfig(
+        agent=args.agent or "river",
+        engine_url=args.engine_url or "http://localhost:6060",
+        streaming=not args.no_stream,
+        show_metadata=args.verbose,
+    )
 
-        print(f"Chatting with {agent}. Type 'exit' to quit.")
-        print("-" * 40)
+    # Get frontend
+    frontend_name = args.frontend or "repl"
+    try:
+        frontend = get_frontend(frontend_name, config)
+    except ValueError as e:
+        print(f"Error: {e}")
+        print(f"Available frontends: {', '.join(list_frontends())}")
+        return 1
 
-        while True:
-            try:
-                user_input = input("You: ").strip()
-                if user_input.lower() in ("exit", "quit", "q"):
-                    break
-                if not user_input:
-                    continue
-
-                request = ChatRequest(
-                    message=user_input,
-                    agent_id=f"agent:{agent}",
-                    memory_enabled=True,
-                )
-
-                response = await engine.chat(request)
-                print(f"{agent.title()}: {response.content}")
-                print()
-
-            except KeyboardInterrupt:
-                break
-            except Exception as e:
-                print(f"Error: {e}")
-
-        print("Goodbye!")
-
-    asyncio.run(chat_loop())
+    # Run frontend
+    asyncio.run(frontend.run())
 
 
 def cmd_start(args):
@@ -299,6 +284,10 @@ def main():
     # chat
     chat_parser = subparsers.add_parser("chat", help="Interactive chat")
     chat_parser.add_argument("--agent", "-a", default="river", help="Agent to chat with")
+    chat_parser.add_argument("--frontend", "-f", default="repl", help="Frontend: repl, tui (future)")
+    chat_parser.add_argument("--engine-url", "-e", default="http://localhost:6060", help="Engine URL")
+    chat_parser.add_argument("--no-stream", action="store_true", help="Disable streaming")
+    chat_parser.add_argument("--verbose", "-V", action="store_true", help="Show model metadata")
 
     # start
     start_parser = subparsers.add_parser("start", help="Start a service")

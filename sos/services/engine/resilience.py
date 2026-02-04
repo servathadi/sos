@@ -256,10 +256,19 @@ class ResilientRouter:
         system_prompt: str = None,
         tools: List[Dict] = None,
         user_id: str = "default",
+        history: List[Dict] = None,
         **kwargs
     ) -> tuple[str, str]:
         """
         Generate response with resilience.
+
+        Args:
+            prompt: The user's message
+            preferred_model: Model to try first
+            system_prompt: System instructions
+            tools: Available tools
+            user_id: User identifier for cache isolation
+            history: Conversation history for cache optimization
 
         Returns:
             Tuple of (response_text, model_id_used)
@@ -304,6 +313,7 @@ class ResilientRouter:
                     system_prompt=system_prompt,
                     tools=tools,
                     user_id=user_id,
+                    history=history,
                     **kwargs
                 )
 
@@ -357,6 +367,100 @@ class ResilientRouter:
         if model_id in self.circuit_breakers:
             self.circuit_breakers[model_id]._transition_to_closed()
             log.info(f"Circuit manually reset: {model_id}")
+
+    async def generate_stream(
+        self,
+        prompt: str,
+        preferred_model: str = None,
+        system_prompt: str = None,
+        user_id: str = "default",
+        **kwargs
+    ) -> tuple[Any, str]:
+        """
+        Stream response tokens with resilience.
+
+        Returns:
+            Tuple of (async_iterator, model_id_used)
+        """
+        # Build execution order: preferred first, then fallback chain
+        execution_order = []
+        if preferred_model and preferred_model in self.adapters:
+            execution_order.append(preferred_model)
+
+        for model_id in self.fallback_chain:
+            if model_id not in execution_order:
+                execution_order.append(model_id)
+
+        last_error = None
+
+        for model_id in execution_order:
+            adapter = self.adapters.get(model_id)
+            if not adapter:
+                continue
+
+            circuit = self.circuit_breakers.get(model_id)
+            limiter = self.rate_limiters.get(model_id)
+
+            # Check circuit breaker
+            if circuit and not circuit.can_execute():
+                log.debug(f"Circuit open, skipping: {model_id}")
+                continue
+
+            # Check rate limit
+            if limiter:
+                can_proceed = await limiter.acquire(timeout=2.0)
+                if not can_proceed:
+                    log.debug(f"Rate limited, trying next: {model_id}")
+                    continue
+
+            # Attempt streaming
+            try:
+                log.debug(f"Attempting stream with: {model_id}")
+
+                # Check if adapter has generate_stream
+                if hasattr(adapter, 'generate_stream'):
+                    stream = adapter.generate_stream(
+                        prompt=prompt,
+                        system_prompt=system_prompt,
+                        user_id=user_id,
+                    )
+
+                    if circuit:
+                        circuit.record_success()
+
+                    log.info(f"Streaming from: {model_id}")
+                    return stream, model_id
+                else:
+                    # Fallback to non-streaming
+                    log.debug(f"Adapter {model_id} has no streaming, using generate()")
+                    response = await adapter.generate(
+                        prompt=prompt,
+                        system_prompt=system_prompt,
+                        user_id=user_id,
+                        **kwargs
+                    )
+
+                    async def _fake_stream():
+                        yield response
+
+                    if circuit:
+                        circuit.record_success()
+
+                    return _fake_stream(), model_id
+
+            except Exception as e:
+                last_error = e
+                log.warn(f"Stream failed: {model_id}", error=str(e))
+
+                if circuit:
+                    circuit.record_failure()
+                continue
+
+        # All adapters failed - return error stream
+        async def _error_stream():
+            yield f"Error: All models failed. Last error: {last_error}"
+
+        return _error_stream(), "error"
 
 
 # Decorator for resilient function calls
