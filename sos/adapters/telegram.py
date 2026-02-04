@@ -29,6 +29,7 @@ from aiogram.types import WebAppInfo, InlineKeyboardMarkup, InlineKeyboardButton
 from sos.clients.engine import EngineClient
 from sos.contracts.engine import ChatRequest
 from sos.observability.logging import get_logger
+from sos.kernel.skills import get_loader, load_skill, list_skills, search_skills
 
 log = get_logger("adapter_telegram")
 
@@ -174,6 +175,167 @@ async def cmd_movie(message: types.Message):
         parse_mode="Markdown"
     )
 
+@dp.message(Command("agents"))
+async def cmd_agents(message: types.Message):
+    """List available agents for delegation."""
+    from sos.agents.definitions import ALL_AGENTS
+    agent_list = "\n".join([
+        f"• `{a.name.lower()}` - {a.title} ({a.tagline})"
+        for a in ALL_AGENTS
+    ])
+    await message.answer(
+        f"🤖 **Available Agents**\n\n{agent_list}\n\n"
+        "_Use `/ask <agent> <question>` to delegate._",
+        parse_mode="Markdown"
+    )
+
+
+@dp.message(Command("ask"))
+async def cmd_ask(message: types.Message, command: Command):
+    """Delegate a question to a specific agent."""
+    if not command.args:
+        await message.answer(
+            "Usage: `/ask <agent> <question>`\n\n"
+            "Example: `/ask shabrang Write a Persian poem about the moon`\n"
+            "Example: `/ask kasra How should I structure this API?`\n\n"
+            "Use `/agents` to list available agents.",
+            parse_mode="Markdown"
+        )
+        return
+
+    parts = command.args.split(None, 1)
+    agent_name = parts[0].lower()
+    task = parts[1] if len(parts) > 1 else "Hello, introduce yourself."
+
+    user_id = str(message.from_user.id)
+
+    # Typing indicator
+    await bot.send_chat_action(chat_id=message.chat.id, action="typing")
+
+    try:
+        # Use delegation endpoint
+        import httpx
+        async with httpx.AsyncClient(timeout=90.0) as client:
+            resp = await client.post(
+                "http://localhost:6060/delegate",
+                json={
+                    "target_agent": agent_name,
+                    "task": task,
+                    "source_agent": f"telegram:{user_id}",
+                }
+            )
+            result = resp.json()
+
+        if result.get("success"):
+            content = result.get("response", "No response")
+            if len(content) > 4000:
+                content = content[:4000] + "\n\n_[Truncated]_"
+            await message.answer(
+                f"🤖 **{agent_name.title()}** says:\n\n{content}",
+                parse_mode="Markdown"
+            )
+        else:
+            await message.answer(f"❌ {result.get('error', 'Delegation failed')}")
+
+    except Exception as e:
+        log.error(f"Delegation error: {e}")
+        await message.answer(f"❌ Error: {e}")
+
+
+@dp.message(Command("skills"))
+async def cmd_skills(message: types.Message):
+    """List available OpenClaw skills."""
+    skills = list_skills()
+    if not skills:
+        await message.answer("📚 No skills found in `~/.agents/skills/`", parse_mode="Markdown")
+        return
+
+    # Group by first letter for readability
+    skill_list = "\n".join([f"• `{s}`" for s in skills[:30]])
+    await message.answer(
+        f"📚 **OpenClaw Skills** ({len(skills)} total)\n\n{skill_list}\n\n"
+        f"_Use `/skill <name>` to load a skill context._",
+        parse_mode="Markdown"
+    )
+
+
+@dp.message(Command("skill"))
+async def cmd_skill(message: types.Message, command: Command):
+    """Load and apply a skill to the conversation."""
+    if not command.args:
+        await message.answer(
+            "Usage: `/skill <name> [your request]`\n\n"
+            "Example: `/skill copywriting Write a homepage headline for my SaaS`\n\n"
+            "Use `/skills` to list available skills.",
+            parse_mode="Markdown"
+        )
+        return
+
+    # Parse skill name and optional request
+    parts = command.args.split(None, 1)
+    skill_name = parts[0].lower()
+    user_request = parts[1] if len(parts) > 1 else None
+
+    # Load skill
+    skill = load_skill(skill_name)
+    if not skill:
+        # Try fuzzy search
+        matches = search_skills(skill_name, limit=3)
+        if matches:
+            suggestions = ", ".join([f"`{m.name}`" for m in matches])
+            await message.answer(f"❌ Skill `{skill_name}` not found.\n\nDid you mean: {suggestions}?", parse_mode="Markdown")
+        else:
+            await message.answer(f"❌ Skill `{skill_name}` not found. Use `/skills` to list.", parse_mode="Markdown")
+        return
+
+    user_id = str(message.from_user.id)
+    selected_model = user_models.get(message.from_user.id, "grok-4-1-fast-reasoning")
+
+    # If no request provided, just show skill info
+    if not user_request:
+        await message.answer(
+            f"📖 **{skill.name}** v{skill.version}\n\n"
+            f"_{skill.description}_\n\n"
+            f"Send `/skill {skill_name} <your request>` to use it.",
+            parse_mode="Markdown"
+        )
+        return
+
+    # Apply skill: inject skill content as context
+    await bot.send_chat_action(chat_id=message.chat.id, action="typing")
+
+    try:
+        # Build skill-augmented prompt
+        skill_prompt = f"""You are operating with the following skill loaded:
+
+---
+{skill.content}
+---
+
+User Request: {user_request}"""
+
+        req = ChatRequest(
+            message=skill_prompt,
+            agent_id=f"user:{user_id}",
+            model=selected_model,
+            memory_enabled=True,
+            metadata={"skill": skill_name}
+        )
+
+        response = await engine_client.chat(req)
+
+        # Truncate if too long for Telegram
+        content = response.content
+        if len(content) > 4000:
+            content = content[:4000] + "\n\n_[Truncated - response too long]_"
+
+        await message.answer(f"📚 **[{skill.name}]**\n\n{content}", parse_mode="Markdown")
+
+    except Exception as e:
+        log.error(f"Skill execution error: {e}")
+        await message.answer(f"❌ Error: {e}")
+
+
 @dp.message(Command("spore"))
 async def cmd_spore(message: types.Message):
     """Generate a portable spore of the user's agent."""
@@ -241,17 +403,6 @@ async def start_telegram_adapter():
         return
 
     log.info(f"🚀 SOS Telegram Adapter active. Ports: 606x standard.")
-    await dp.start_polling(bot)
-
-if __name__ == "__main__":
-    asyncio.run(start_telegram_adapter())
-
-async def start_telegram_adapter():
-    if not bot:
-        log.error("TELEGRAM_BOT_TOKEN missing. Adapter disabled.")
-        return
-
-    log.info(f"🚀 Telegram Adapter active. Gateway: {WEB_APP_URL}")
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
