@@ -94,6 +94,14 @@ class SOSEngine(EngineContract):
         from sos.kernel.hatchery import Hatchery
         self.hatchery = Hatchery()
 
+        # Initialize Delegation Service
+        from sos.services.engine.delegation import DelegationService
+        self.delegation = DelegationService(self)
+
+        # Witness Protocol state
+        self.pending_witnesses: Dict[str, asyncio.Event] = {}
+        self.witness_results: Dict[str, int] = {}
+
     def _load_hatched_dna(self, agent_id: str) -> Optional["AgentDNA"]:
         """Loads DNA from the souls/ directory if it exists."""
         from sos.kernel.identity import AgentDNA

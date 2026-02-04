@@ -12,6 +12,7 @@ class ChatRequest:
     witness_enabled: bool = False  # Added for Witness Protocol
     capability: Optional[Any] = None # Added for FMAAP support
     stream: bool = False
+    metadata: Dict[str, Any] = field(default_factory=dict)  # For delegation tracking
 
 @dataclass
 class ChatResponse:

@@ -300,3 +300,91 @@ async def cast_vote(req: CastVoteRequest):
     except Exception as e:
         log.error(f"Voting failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- Agent Delegation (#69) ---
+class DelegateRequest(BaseModel):
+    target_agent: str
+    task: str
+    source_agent: str = "river"
+    conversation_id: Optional[str] = None
+
+
+@app.post("/delegate")
+async def delegate_task(req: DelegateRequest):
+    """Delegate a task to another agent."""
+    result = await engine.delegation.delegate(
+        target_agent=req.target_agent,
+        task=req.task,
+        source_agent=req.source_agent,
+        conversation_id=req.conversation_id,
+    )
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("error"))
+    return result
+
+
+@app.get("/agents")
+async def list_agents():
+    """List available agents for delegation."""
+    from sos.agents.definitions import ALL_AGENTS
+    return {
+        "agents": [
+            {
+                "name": a.name.lower(),
+                "title": a.title,
+                "description": a.tagline,
+                "model": a.model,
+                "roles": [r.value for r in a.roles],
+            }
+            for a in ALL_AGENTS
+        ]
+    }
+
+
+# --- Task Management (#70) ---
+from sos.services.engine.swarm import get_swarm
+
+swarm = get_swarm()
+
+
+class CreateTaskRequest(BaseModel):
+    title: str
+    description: str
+    owner: str = "user"
+    priority: str = "normal"
+    scope: str = "General"
+
+
+@app.post("/tasks/create")
+async def create_task(req: CreateTaskRequest):
+    """Create a new task."""
+    task_id = await swarm._create_task(
+        title=req.title,
+        scope=req.scope,
+        parent_objective=req.description,
+    )
+    return {"task_id": task_id, "status": "pending"}
+
+
+@app.get("/tasks/list")
+async def list_all_tasks():
+    """List all pending tasks."""
+    tasks = await swarm.list_pending_tasks()
+    return {"tasks": tasks, "count": len(tasks)}
+
+
+@app.post("/tasks/{task_id}/complete")
+async def complete_task(task_id: str):
+    """Mark a task as complete."""
+    success = await swarm.complete_task(task_id)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
+    return {"status": "completed", "task_id": task_id}
+
+
+@app.post("/tasks/shard")
+async def shard_objective(objective: str):
+    """Break down a high-level objective into micro-tasks."""
+    task_ids = await swarm.shard_objective(objective)
+    return {"shards": task_ids, "count": len(task_ids)}
