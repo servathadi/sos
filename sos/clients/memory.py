@@ -22,3 +22,11 @@ class MemoryClient(BaseHTTPClient):
     async def search(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
         payload = {"query": query, "limit": limit}
         return self._request("POST", "/search", json=payload).json()["results"]
+
+    async def get_coherence(self) -> float:
+        """Get current coherence from ARF state."""
+        try:
+            state = self._request("GET", "/state").json()
+            return state.get("coherence_raw", 0.5)
+        except Exception:
+            return 0.5  # Default fallback

@@ -25,10 +25,18 @@ class BioCommiterStub:
 log = get_logger("identity_qnft")
 
 class QNFTMinter:
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, agent_name: Optional[str] = None):
         self.config = config
-        self.agent_name = "sos_agent" # TODO: get from Identity/DNA
-        
+
+        # Get agent name from: 1) explicit param, 2) env var, 3) config, 4) default
+        import os
+        self.agent_name = (
+            agent_name
+            or os.getenv("SOS_AGENT_NAME")
+            or getattr(config, "agent_name", None)
+            or "sos_agent"
+        )
+
         # Use SOS Data Directory
         self.data_dir = self.config.paths.data_dir
         self.output_dir = self.data_dir / "qnft_minting"

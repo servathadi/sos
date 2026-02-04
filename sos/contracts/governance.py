@@ -22,7 +22,7 @@ class ProposalStatus(Enum):
     EXECUTED = "executed"
 
 
-class VoteChoice(Enum):
+class VoteChoice(str, Enum):
     """Valid vote choices."""
     YES = "yes"
     NO = "no"

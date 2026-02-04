@@ -268,10 +268,16 @@ class SOSEngine(EngineContract):
             self.witness_results.pop(witness_key, None)
             
             # 5. Calculate Physics of Will
+            # Fetch real coherence from Memory service (Mirror)
+            try:
+                agent_coherence = await self.memory.get_coherence()
+            except Exception:
+                agent_coherence = 0.5  # Fallback if Memory unavailable
+
             physics_result = CoherencePhysics.compute_collapse_energy(
                 vote=witness_vote,
                 latency_ms=real_latency_ms,
-                agent_coherence=0.95 # TODO: Fetch real coherence from Mirror
+                agent_coherence=agent_coherence
             )
             
             log.info(f"⚛️ Wave Function Collapsed: Omega={physics_result['omega']:.4f}, Coherence Gain={physics_result['delta_c']:.4f}",
@@ -438,5 +444,80 @@ class SOSEngine(EngineContract):
         }
 
     async def handle_message(self, message: Message) -> Response:
-        # TODO: Implement generic message handling
-        return Response(content="Not implemented")
+        """
+        Generic message handler - routes messages to appropriate handlers.
+
+        Supports:
+        - CHAT: Invoke chat endpoint
+        - TOOL_CALL: Execute tool
+        - MEMORY_QUERY: Proxy to memory service
+        - HEALTH_CHECK: Return health status
+        """
+        from sos.kernel.schema import MessageType, ResponseStatus
+
+        try:
+            if message.type == MessageType.CHAT:
+                # Convert message to ChatRequest and process
+                request = ChatRequest(
+                    agent_id=message.source,
+                    message=message.payload.get("content", ""),
+                    conversation_id=message.payload.get("conversation_id"),
+                    model=message.payload.get("model"),
+                    memory_enabled=message.payload.get("memory_enabled", True),
+                    tools_enabled=message.payload.get("tools_enabled", False),
+                )
+                result = await self.chat(request)
+                return Response(
+                    message_id=message.id,
+                    status=ResponseStatus.SUCCESS,
+                    data={"response": result.message, "model": result.model_used},
+                    trace_id=message.trace_id,
+                )
+
+            elif message.type == MessageType.TOOL_CALL:
+                tool_name = message.payload.get("tool_name")
+                tool_args = message.payload.get("arguments", {})
+                result = await self.tools.execute(tool_name, tool_args)
+                return Response(
+                    message_id=message.id,
+                    status=ResponseStatus.SUCCESS,
+                    data={"result": result},
+                    trace_id=message.trace_id,
+                )
+
+            elif message.type == MessageType.MEMORY_QUERY:
+                query = message.payload.get("query", "")
+                limit = message.payload.get("limit", 5)
+                results = await self.memory.search(query, limit)
+                return Response(
+                    message_id=message.id,
+                    status=ResponseStatus.SUCCESS,
+                    data={"results": results},
+                    trace_id=message.trace_id,
+                )
+
+            elif message.type == MessageType.HEALTH_CHECK:
+                health = await self.health()
+                return Response(
+                    message_id=message.id,
+                    status=ResponseStatus.SUCCESS,
+                    data=health,
+                    trace_id=message.trace_id,
+                )
+
+            else:
+                return Response(
+                    message_id=message.id,
+                    status=ResponseStatus.ERROR,
+                    error={"code": "unsupported_type", "message": f"Message type {message.type} not supported"},
+                    trace_id=message.trace_id,
+                )
+
+        except Exception as e:
+            log.error(f"Message handling failed: {e}", message_id=message.id)
+            return Response(
+                message_id=message.id,
+                status=ResponseStatus.ERROR,
+                error={"code": "internal_error", "message": str(e)},
+                trace_id=message.trace_id,
+            )

@@ -239,13 +239,7 @@ async def resolve_witness(request: WitnessCollapseRequest):
 
 # --- Swarm Council (Governance) ---
 from sos.services.engine.council import SwarmCouncil
-from enum import Enum
-
-# Stub governance contracts (TODO: move to sos.contracts.governance)
-class VoteChoice(str, Enum):
-    YES = "yes"
-    NO = "no"
-    ABSTAIN = "abstain"
+from sos.contracts.governance import VoteChoice
 
 council = SwarmCouncil(squad_id="core")
 
