@@ -23,6 +23,13 @@ from sos.kernel.capability import (
     verify_capability_signature,
 )
 from sos.kernel.config import Config, RuntimePaths
+from sos.kernel.skills import (
+    Skill,
+    SkillLoader,
+    load_skill,
+    list_skills,
+    search_skills,
+)
 
 __all__ = [
     # Schema
@@ -43,4 +50,10 @@ __all__ = [
     # Config
     "Config",
     "RuntimePaths",
+    # Skills
+    "Skill",
+    "SkillLoader",
+    "load_skill",
+    "list_skills",
+    "search_skills",
 ]

@@ -389,3 +389,70 @@ SHABRANG = AgentSoul(
 
 # All defined agents
 ALL_AGENTS = [RIVER, KASRA, MIZAN, MUMEGA, CODEX, CONSULTANT, DANDAN, SHABRANG]
+
+
+# =============================================================================
+# AGENT SKILLS MAPPING (OpenClaw Integration)
+# =============================================================================
+# Maps each agent to their relevant skills from ~/.agents/skills/
+# Skills are loaded on-demand via sos.kernel.skills.load_skill()
+
+AGENT_SKILLS: dict[str, list[str]] = {
+    "river": [
+        "writing-plans",
+        "executing-plans",
+        "brainstorming",
+    ],
+    "kasra": [
+        "cloudflare",
+        "mcp-builder",
+        "test-driven-development",
+        "subagent-driven-development",
+        "agents-sdk",
+        "supabase-postgres-best-practices",
+    ],
+    "mizan": [
+        "copywriting",
+        "page-cro",
+        "ab-test-setup",
+        "analytics-tracking",
+        "marketing-psychology",
+        "product-marketing-context",
+    ],
+    "mumega": [
+        "executing-plans",
+        "github-workflow-automation",
+    ],
+    "codex": [
+        "writing-plans",
+        "frontend-design",
+        "brainstorming",
+    ],
+    "consultant": [
+        "marketing-psychology",
+        "product-marketing-context",
+    ],
+    "dandan": [
+        "programmatic-seo",
+        "seo-fundamentals",
+        "seo-audit",
+    ],
+    "shabrang": [
+        "social-content",
+        "email-sequence",
+        "copywriting",
+    ],
+}
+
+
+def get_agent_skills(agent_name: str) -> list[str]:
+    """Get the skills assigned to an agent."""
+    return AGENT_SKILLS.get(agent_name.lower(), [])
+
+
+def get_agents_for_skill(skill_name: str) -> list[str]:
+    """Get all agents that have a particular skill."""
+    return [
+        agent for agent, skills in AGENT_SKILLS.items()
+        if skill_name in skills
+    ]

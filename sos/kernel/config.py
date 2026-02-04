@@ -131,6 +131,9 @@ class Config:
     economy_url: str = "http://localhost:6062"
     tools_url: str = "http://localhost:6063"
 
+    # Skills path (OpenClaw vendor integration)
+    skills_path: str = str(Path.home() / ".agents" / "skills")
+
     def __post_init__(self):
         """Apply environment variable overrides."""
         self._apply_env_overrides()
@@ -145,6 +148,7 @@ class Config:
             "SOS_MEMORY_URL": "memory_url",
             "SOS_ECONOMY_URL": "economy_url",
             "SOS_TOOLS_URL": "tools_url",
+            "SOS_SKILLS_PATH": "skills_path",
         }
 
         for env_var, attr in env_mappings.items():
