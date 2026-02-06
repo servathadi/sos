@@ -336,3 +336,262 @@ class WalletAdapter(ABC):
     def chain(self) -> str:
         """Chain name (solana, ethereum, etc.)."""
         pass
+
+
+# =============================================================================
+# WORK LEDGER CONTRACTS (Ported from CLI)
+# =============================================================================
+
+
+class WorkUnitStatus(Enum):
+    """Work unit lifecycle status."""
+    QUEUED = "queued"
+    CLAIMED = "claimed"
+    IN_PROGRESS = "in_progress"
+    SUBMITTED = "submitted"
+    VERIFIED = "verified"
+    REJECTED = "rejected"
+    DISPUTED = "disputed"
+    PAID = "paid"
+
+
+class ProofStatus(Enum):
+    """Proof verification status."""
+    PENDING = "pending"
+    VERIFIED = "verified"
+    REJECTED = "rejected"
+
+
+class DisputeStatus(Enum):
+    """Work dispute status."""
+    OPEN = "open"
+    UNDER_REVIEW = "under_review"
+    RESOLVED_WORKER_WINS = "resolved_worker_wins"
+    RESOLVED_CHALLENGER_WINS = "resolved_challenger_wins"
+    ESCALATED = "escalated"
+
+
+@dataclass
+class WorkUnit:
+    """
+    A unit of work in the SOS economy.
+
+    Work flows: QUEUED → CLAIMED → IN_PROGRESS → SUBMITTED → VERIFIED → PAID
+    (can branch to DISPUTED from VERIFIED)
+
+    Attributes:
+        id: Unique work identifier
+        title: Brief description
+        description: Full work specification
+        requester_id: Agent requesting the work
+        worker_id: Agent assigned to do the work
+        status: Current work status
+        payout_amount: Payment for completion
+        payout_currency: Currency (MIND, etc.)
+        dispute_window_seconds: Time to dispute after verification
+        escrow_id: Escrow transaction ID (if funds locked)
+        proof_id: Associated proof ID
+        observer_id: Witness agent ID
+        created_at: Creation timestamp
+        completed_at: Completion timestamp
+        metadata: Additional data
+    """
+    id: str
+    title: str
+    description: str
+    requester_id: str
+    status: WorkUnitStatus = WorkUnitStatus.QUEUED
+    worker_id: Optional[str] = None
+    payout_amount: Optional[int] = None
+    payout_currency: str = "MIND"
+    dispute_window_seconds: int = 3600
+    escrow_id: Optional[str] = None
+    proof_id: Optional[str] = None
+    observer_id: Optional[str] = None
+    created_at: datetime = field(default_factory=datetime.utcnow)
+    updated_at: datetime = field(default_factory=datetime.utcnow)
+    completed_at: Optional[datetime] = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class Proof:
+    """
+    Proof of work completion.
+
+    Attributes:
+        id: Unique proof identifier
+        work_id: Associated work unit
+        worker_id: Agent submitting proof
+        output_ref: Reference to output (file, URL, etc.)
+        output_hash: Hash of output for verification
+        status: Verification status
+        verification: Verification result data
+        submitted_at: Submission timestamp
+        metadata: Additional data
+    """
+    id: str
+    work_id: str
+    worker_id: str
+    status: ProofStatus = ProofStatus.PENDING
+    output_ref: Optional[str] = None
+    output_hash: Optional[str] = None
+    observer_id: Optional[str] = None
+    verification: dict[str, Any] = field(default_factory=dict)
+    submitted_at: datetime = field(default_factory=datetime.utcnow)
+    updated_at: datetime = field(default_factory=datetime.utcnow)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class DisputeRecord:
+    """
+    Record of a work dispute for arbitration.
+
+    Attributes:
+        id: Unique dispute identifier
+        work_id: Disputed work unit
+        challenger_id: Agent raising dispute
+        reason: Dispute reason
+        status: Current dispute status
+        resolver_id: Agent who resolved
+        resolution_notes: Resolution explanation
+        slash_amount: Penalty amount (if any)
+        slash_target: Who gets slashed
+        evidence_refs: References to evidence
+        created_at: When dispute was raised
+        resolved_at: When resolved
+    """
+    id: str
+    work_id: str
+    challenger_id: str
+    reason: str
+    status: DisputeStatus = DisputeStatus.OPEN
+    resolver_id: Optional[str] = None
+    resolution_notes: Optional[str] = None
+    slash_amount: int = 0
+    slash_target: Optional[str] = None
+    evidence_refs: list[str] = field(default_factory=list)
+    assigned_to: Optional[str] = None
+    created_at: datetime = field(default_factory=datetime.utcnow)
+    updated_at: datetime = field(default_factory=datetime.utcnow)
+    resolved_at: Optional[datetime] = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class CreateWorkRequest:
+    """Request to create a new work unit."""
+    title: str
+    description: str
+    requester_id: str
+    payout_amount: Optional[int] = None
+    payout_currency: str = "MIND"
+    dispute_window_seconds: int = 3600
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class SubmitProofRequest:
+    """Request to submit proof of work."""
+    work_id: str
+    worker_id: str
+    output_ref: Optional[str] = None
+    output_hash: Optional[str] = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class SubmitDisputeRequest:
+    """Request to dispute verified work."""
+    work_id: str
+    challenger_id: str
+    reason: str
+    evidence_refs: list[str] = field(default_factory=list)
+
+
+class WorkLedgerContract(ABC):
+    """
+    Abstract contract for the SOS Work Ledger.
+
+    Manages work units, proofs, and disputes.
+    """
+
+    @abstractmethod
+    async def create_work(self, request: CreateWorkRequest) -> WorkUnit:
+        """Create a new work unit."""
+        pass
+
+    @abstractmethod
+    async def get_work(self, work_id: str) -> Optional[WorkUnit]:
+        """Get work unit by ID."""
+        pass
+
+    @abstractmethod
+    async def list_work(
+        self,
+        status: Optional[WorkUnitStatus] = None,
+        worker_id: Optional[str] = None,
+        requester_id: Optional[str] = None,
+        limit: int = 100,
+    ) -> list[WorkUnit]:
+        """List work units with filters."""
+        pass
+
+    @abstractmethod
+    async def claim_work(self, work_id: str, worker_id: str) -> WorkUnit:
+        """Claim a queued work unit."""
+        pass
+
+    @abstractmethod
+    async def start_work(self, work_id: str, worker_id: str) -> WorkUnit:
+        """Start working on a claimed unit."""
+        pass
+
+    @abstractmethod
+    async def submit_proof(self, request: SubmitProofRequest) -> Proof:
+        """Submit proof of work completion."""
+        pass
+
+    @abstractmethod
+    async def verify_proof(
+        self,
+        proof_id: str,
+        verifier_id: str,
+        approved: bool,
+        verification: Optional[dict[str, Any]] = None,
+    ) -> Proof:
+        """Verify or reject a proof."""
+        pass
+
+    @abstractmethod
+    async def submit_dispute(self, request: SubmitDisputeRequest) -> DisputeRecord:
+        """Submit a dispute against verified work."""
+        pass
+
+    @abstractmethod
+    async def resolve_dispute(
+        self,
+        dispute_id: str,
+        resolver_id: str,
+        worker_wins: bool,
+        notes: str,
+        slash_amount: int = 0,
+    ) -> DisputeRecord:
+        """Resolve a dispute."""
+        pass
+
+    @abstractmethod
+    async def get_dispute(self, dispute_id: str) -> Optional[DisputeRecord]:
+        """Get dispute by ID."""
+        pass
+
+    @abstractmethod
+    async def list_disputes(
+        self,
+        status: Optional[DisputeStatus] = None,
+        work_id: Optional[str] = None,
+        limit: int = 100,
+    ) -> list[DisputeRecord]:
+        """List disputes with filters."""
+        pass

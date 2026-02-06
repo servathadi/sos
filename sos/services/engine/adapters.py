@@ -74,6 +74,10 @@ class GeminiAdapter(ModelAdapter):
         # Build system prompt (simplified - remove FRC for now)
         anchor_prompt = system_prompt or "You are River, a helpful AI assistant."
 
+        # Prepend system prompt to user prompt for consistent behavior
+        if system_prompt:
+            prompt = f"{system_prompt}\n\n---\nUser: {prompt}"
+
         attempts = 0
         max_attempts = self.rotator.key_count or 1
 
@@ -195,6 +199,104 @@ class GrokAdapter(ModelAdapter):
             messages=messages,
         ):
             yield chunk
+
+
+class OpenAIAdapter(ModelAdapter):
+    """
+    Adapter for OpenAI GPT models (GPT-4o, GPT-4o-mini).
+    Used as fallback when Gemini keys are exhausted.
+    """
+    def __init__(self, model: str = "gpt-4o-mini"):
+        self.model = model
+        self.api_key = os.getenv("OPENAI_API_KEY")
+        if not self.api_key:
+            log.warning("OPENAI_API_KEY not set. OpenAI adapter will be unavailable.")
+
+    def get_model_id(self) -> str:
+        return self.model
+
+    async def generate(self, prompt: str, system_prompt: str = None, tools: List[Dict] = None, user_id: str = "default", history: List[Dict] = None, **kwargs) -> str:
+        if not self.api_key:
+            return "Error: OpenAI API key not configured"
+
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        if history:
+            messages.extend(history)
+        messages.append({"role": "user", "content": prompt})
+
+        try:
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                resp = await client.post(
+                    "https://api.openai.com/v1/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}",
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "model": self.model,
+                        "messages": messages,
+                        "temperature": 0.7,
+                        "max_tokens": 4096
+                    }
+                )
+
+                if resp.status_code != 200:
+                    error_msg = resp.text
+                    log.error(f"OpenAI API error: {resp.status_code} - {error_msg}")
+                    raise Exception(f"OpenAI API error: {resp.status_code}")
+
+                data = resp.json()
+                return data["choices"][0]["message"]["content"]
+
+        except Exception as e:
+            log.error(f"OpenAI generation failed: {e}")
+            raise
+
+    async def generate_stream(self, prompt: str, system_prompt: str = None, **kwargs) -> AsyncIterator[str]:
+        if not self.api_key:
+            yield "Error: OpenAI API key not configured"
+            return
+
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+
+        try:
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                async with client.stream(
+                    "POST",
+                    "https://api.openai.com/v1/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}",
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "model": self.model,
+                        "messages": messages,
+                        "temperature": 0.7,
+                        "stream": True
+                    }
+                ) as resp:
+                    async for line in resp.aiter_lines():
+                        if line.startswith("data: "):
+                            data_str = line[6:]
+                            if data_str.strip() == "[DONE]":
+                                break
+                            try:
+                                data = json.loads(data_str)
+                                delta = data["choices"][0].get("delta", {})
+                                content = delta.get("content", "")
+                                if content:
+                                    yield content
+                            except json.JSONDecodeError:
+                                continue
+        except Exception as e:
+            log.error(f"OpenAI stream failed: {e}")
+            yield f"[Error: {e}]"
+
 
 class MockAdapter(ModelAdapter):
     """

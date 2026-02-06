@@ -112,7 +112,7 @@ def validate_config() -> ValidationResult:
     # Check service ports for conflicts
     ports = {
         "SOS_ENGINE_PORT": os.environ.get("SOS_ENGINE_PORT", "6060"),
-        "SOS_MEMORY_PORT": os.environ.get("SOS_MEMORY_PORT", "7070"),
+        "SOS_MEMORY_PORT": os.environ.get("SOS_MEMORY_PORT", "6061"),
         "SOS_ECONOMY_PORT": os.environ.get("SOS_ECONOMY_PORT", "6062"),
         "SOS_TOOLS_PORT": os.environ.get("SOS_TOOLS_PORT", "6063"),
     }

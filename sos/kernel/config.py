@@ -127,7 +127,7 @@ class Config:
 
     # Service URLs (for http mode)
     engine_url: str = "http://localhost:6060"
-    memory_url: str = "http://localhost:7070"
+    memory_url: str = "http://localhost:6061"
     economy_url: str = "http://localhost:6062"
     tools_url: str = "http://localhost:6063"
 
@@ -209,7 +209,7 @@ class Config:
             services=config_dict.get("services", {}),
             features=config_dict.get("features", {}),
             engine_url=config_dict.get("engine_url", "http://localhost:6060"),
-            memory_url=config_dict.get("memory_url", "http://localhost:7070"),
+            memory_url=config_dict.get("memory_url", "http://localhost:6061"),
             economy_url=config_dict.get("economy_url", "http://localhost:6062"),
             tools_url=config_dict.get("tools_url", "http://localhost:6063"),
         )

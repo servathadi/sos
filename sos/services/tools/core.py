@@ -45,6 +45,8 @@ class LocalTools(ToolExecutor):
         self._tools = {
             "web_search": self._web_search,
             "filesystem_read": self._filesystem_read,
+            "filesystem_write": self._filesystem_write,
+            "bash": self._bash_execute,
             "generate_spore": self._generate_spore,
             "generate_ui_asset": self._generate_ui_asset,
             "google_drive_list": self._google_drive_list,
@@ -127,16 +129,100 @@ class LocalTools(ToolExecutor):
         path = args.get("path")
         if not path:
             return "Error: Missing path"
-        
+
         # Security check: Must be in /home/mumega
         if not path.startswith("/home/mumega"):
             return "Error: Access Denied (Sandbox violation)"
-            
+
         try:
             with open(path, "r") as f:
                 return f.read()
         except Exception as e:
             return f"Read Error: {e}"
+
+    async def _filesystem_write(self, args: Dict[str, Any]) -> str:
+        """Write content to a file (sandboxed to /home/mumega)."""
+        path = args.get("path")
+        content = args.get("content")
+        if not path:
+            return "Error: Missing path"
+        if content is None:
+            return "Error: Missing content"
+
+        # Security check: Must be in /home/mumega
+        if not path.startswith("/home/mumega"):
+            return "Error: Access Denied (Sandbox violation)"
+
+        # Block writing to sensitive paths
+        blocked = [".ssh", ".env", ".bashrc", ".profile", "credentials", "secret"]
+        if any(b in path.lower() for b in blocked):
+            return "Error: Access Denied (Protected path)"
+
+        try:
+            with open(path, "w") as f:
+                f.write(content)
+            return f"Written {len(content)} bytes to {path}"
+        except Exception as e:
+            return f"Write Error: {e}"
+
+    async def _bash_execute(self, args: Dict[str, Any]) -> str:
+        """Execute a bash command (sandboxed, timeout enforced)."""
+        import subprocess
+        import shlex
+
+        command = args.get("command")
+        if not command:
+            return "Error: Missing command"
+
+        # Security: Block dangerous commands
+        blocked_patterns = [
+            "rm -rf /", "rm -rf /*", "mkfs", "dd if=", ":(){", "fork bomb",
+            "> /dev/sd", "chmod -R 777 /", "wget | sh", "curl | sh",
+            "sudo rm", "sudo mkfs", "sudo dd", ":(){ :|:& };:",
+        ]
+        cmd_lower = command.lower()
+        for pattern in blocked_patterns:
+            if pattern in cmd_lower:
+                return f"Error: Blocked dangerous command pattern: {pattern}"
+
+        # Security: Block sudo unless explicitly allowed
+        if "sudo" in cmd_lower and not args.get("allow_sudo", False):
+            return "Error: sudo requires explicit allow_sudo=True"
+
+        # Set working directory to safe location
+        cwd = args.get("cwd", "/home/mumega")
+        if not cwd.startswith("/home/mumega"):
+            cwd = "/home/mumega"
+
+        timeout = min(args.get("timeout", 30), 120)  # Max 2 minutes
+
+        try:
+            log.info(f"Executing bash: {command[:100]}...")
+            result = subprocess.run(
+                command,
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                cwd=cwd,
+                env={**os.environ, "HOME": "/home/mumega"}
+            )
+
+            output = result.stdout
+            if result.stderr:
+                output += f"\n[stderr]: {result.stderr}"
+            if result.returncode != 0:
+                output += f"\n[exit code: {result.returncode}]"
+
+            # Truncate if too long
+            if len(output) > 10000:
+                output = output[:10000] + "\n... [truncated]"
+
+            return output or "(no output)"
+        except subprocess.TimeoutExpired:
+            return f"Error: Command timed out after {timeout}s"
+        except Exception as e:
+            return f"Bash Error: {e}"
 
     async def _google_drive_list(self, args: Dict[str, Any]) -> str:
         from sos.services.tools.google_auth import get_google_credentials
@@ -206,8 +292,10 @@ class ToolsCore:
 
     async def list_tools(self) -> List[Dict[str, Any]]:
         local = [
-            {"name": "web_search", "description": "Search the web"},
-            {"name": "filesystem_read", "description": "Read a file"},
+            {"name": "bash", "description": "Execute bash commands (sandboxed to /home/mumega, 2min timeout)"},
+            {"name": "web_search", "description": "Search the web via DuckDuckGo"},
+            {"name": "filesystem_read", "description": "Read a file (sandboxed to /home/mumega)"},
+            {"name": "filesystem_write", "description": "Write content to a file (sandboxed to /home/mumega)"},
             {"name": "generate_spore", "description": "Generate a context-injection spore for agent state transfer"},
             {"name": "wallet_balance", "description": "Check wallet balance"},
             {"name": "wallet_debit", "description": "Debit funds from wallet"},

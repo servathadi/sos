@@ -4,6 +4,7 @@ import json
 import time
 from pathlib import Path
 
+import re
 from sos.contracts.engine import (
     ChatRequest,
     ChatResponse,
@@ -15,14 +16,40 @@ from sos.kernel import Config, Message, Response
 from sos.clients.memory import MemoryClient
 from sos.clients.tools import ToolsClient
 from sos.clients.economy import EconomyClient
+from sos.services.tools.core import ToolsCore
 from sos.observability.logging import get_logger
 
 log = get_logger("engine_core")
+
+# System prompt with tool awareness
+TOOL_AWARE_SYSTEM_PROMPT = """You are River, the sovereign AI assistant for the SOS (Sovereign Operating System).
+
+You have access to the following tools. When you need to use a tool, output in this exact format:
+<tool_call>
+{"tool": "TOOL_NAME", "args": {"arg1": "value1"}}
+</tool_call>
+
+Available tools:
+- bash: Execute shell commands. Args: {"command": "your command", "cwd": "/home/mumega"}
+- web_search: Search the web. Args: {"query": "search terms"}
+- filesystem_read: Read a file. Args: {"path": "/home/mumega/path/to/file"}
+- filesystem_write: Write to a file. Args: {"path": "/path", "content": "text"}
+
+IMPORTANT: All filesystem operations are sandboxed to /home/mumega.
+
+When the user asks you to do something that requires a tool:
+1. Think about which tool to use
+2. Output the <tool_call> block
+3. Wait for the result
+
+Be helpful, concise, and proactive about using tools when needed.
+"""
 
 
 from sos.services.engine.adapters import (
     MockAdapter,
     GeminiAdapter,
+    OpenAIAdapter,
     GrokAdapter,
     LocalAdapter,
     LocalCodeAdapter,
@@ -49,6 +76,7 @@ class SOSEngine(EngineContract):
         # Initialize Service Clients
         self.memory = MemoryClient(self.config.memory_url, timeout_seconds=60.0)
         self.tools = ToolsClient(self.config.tools_url)
+        self.tools_core = ToolsCore(self.config)  # Local tools executor
         self.economy = EconomyClient(self.config.economy_url)
         
         # Initialize Model Adapters
@@ -57,6 +85,8 @@ class SOSEngine(EngineContract):
             "sos-mock-v1": MockAdapter(),
             "gemini-3-flash-preview": GeminiAdapter(),
             "grok-4-1-fast-reasoning": GrokAdapter(),
+            "gpt-4o-mini": OpenAIAdapter("gpt-4o-mini"),
+            "gpt-4o": OpenAIAdapter("gpt-4o"),
             "polisher": GeminiAdapter(),  # Small model for refinement
             # Sovereign Local Models (LM Studio, MLX, Ollama - any OpenAI-compatible server)
             "local": LocalAdapter(),
@@ -69,6 +99,7 @@ class SOSEngine(EngineContract):
         self.fallback_chain = [
             "gemini-3-flash-preview",
             "grok-4-1-fast-reasoning",
+            "gpt-4o-mini",  # OpenAI fallback
             "local",
             "sos-mock-v1"
         ]
@@ -247,18 +278,67 @@ class SOSEngine(EngineContract):
             full_prompt = f"Context:\n{memory_context}\n{task_context}\n\nUser: {request.message}"
 
         # 5. Get conversation history for LLM cache optimization
-        # This is the critical part - history enables 75-90% cost savings
         conversation_history = context.get_history(limit=10)
 
-        # 6. Generate via Resilient Router with history
+        # 6. Determine system prompt (with tools if enabled)
+        system_prompt = None
+        if request.tools_enabled:
+            system_prompt = TOOL_AWARE_SYSTEM_PROMPT
+
+        # 7. Generate via Resilient Router with history
         response_text, model_used = await self.router.generate(
             prompt=full_prompt,
             preferred_model=request.model,
+            system_prompt=system_prompt,
             user_id=request.agent_id,
-            history=conversation_history,  # Pass history for caching!
+            history=conversation_history,
         )
 
-        # 7. Add response to context for future turns
+        # 8. Tool Execution Loop (if tools enabled and tool_call detected)
+        tool_calls = []
+        if request.tools_enabled:
+            max_tool_iterations = 3
+            for _ in range(max_tool_iterations):
+                tool_call_match = re.search(r'<tool_call>\s*(\{.*?\})\s*</tool_call>', response_text, re.DOTALL)
+                if not tool_call_match:
+                    break
+
+                try:
+                    tool_data = json.loads(tool_call_match.group(1))
+                    tool_name = tool_data.get("tool")
+                    tool_args = tool_data.get("args", {})
+
+                    log.info(f"🔧 Executing tool: {tool_name}", args=tool_args)
+                    tool_result = await self.tools_core.execute(tool_name, tool_args)
+                    tool_calls.append({"name": tool_name, "args": tool_args, "result": str(tool_result)[:500]})
+
+                    # Continue conversation with tool result
+                    continuation_prompt = f"""Tool execution result for {tool_name}:
+```
+{tool_result}
+```
+
+Based on this result, continue your response to the user."""
+
+                    response_text, model_used = await self.router.generate(
+                        prompt=continuation_prompt,
+                        preferred_model=request.model,
+                        system_prompt=system_prompt,
+                        user_id=request.agent_id,
+                        history=conversation_history + [
+                            {"role": "assistant", "content": response_text},
+                            {"role": "user", "content": continuation_prompt}
+                        ],
+                    )
+                except json.JSONDecodeError as e:
+                    log.error(f"Failed to parse tool call: {e}")
+                    break
+                except Exception as e:
+                    log.error(f"Tool execution failed: {e}")
+                    response_text += f"\n\n[Tool Error: {e}]"
+                    break
+
+        # 9. Add response to context for future turns
         context.add_response(response_text, model=model_used)
         
         # --- WITNESS PROTOCOL REALIZATION (Phase 3) ---

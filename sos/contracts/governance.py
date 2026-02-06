@@ -215,3 +215,303 @@ class QuorumNotMetError(GovernanceError):
 class NotAuthorizedError(GovernanceError):
     """Agent is not authorized for this action."""
     pass
+
+
+# =============================================================================
+# TRUST SYSTEM CONTRACTS (Ported from CLI)
+# =============================================================================
+
+
+class TrustTier(Enum):
+    """
+    Agent trust tiers with ascending permissions.
+
+    Tiers:
+    - TIER_3_ANONYMOUS: Zero trust, rate-limited, sandboxed
+    - TIER_2_GUEST: Limited trust, read-only access
+    - TIER_1_VERIFIED: Bonded trust (staked or PoUI passed)
+    - TIER_0_SOVEREIGN: Full trust (core agents)
+    """
+    TIER_3_ANONYMOUS = 0
+    TIER_2_GUEST = 1
+    TIER_1_VERIFIED = 2
+    TIER_0_SOVEREIGN = 3
+
+
+class Permission(Enum):
+    """Granular permissions for SOS operations."""
+    # Read Operations
+    READ_STATUS = "read_status"
+    READ_WORK = "read_work"
+    READ_MEMORY = "read_memory"
+
+    # Write Operations
+    DISPATCH_TASK = "dispatch_task"
+    SUBMIT_PROOF = "submit_proof"
+    CREATE_WORK = "create_work"
+    WRITE_MEMORY = "write_memory"
+    CONVENE_COUNCIL = "convene_council"
+
+    # Governance
+    PROPOSE = "propose"
+    VOTE = "vote"
+    WITNESS = "witness"
+    RESOLVE_DISPUTE = "resolve_dispute"
+
+    # Admin Operations
+    REGISTER_AGENT = "register_agent"
+    VERIFY_PROOF = "verify_proof"
+    EXECUTE_PAYOUT = "execute_payout"
+    MODIFY_SETTINGS = "modify_settings"
+
+
+# Tier -> Permissions mapping
+TIER_PERMISSIONS: Dict[TrustTier, Set[Permission]] = {
+    TrustTier.TIER_3_ANONYMOUS: {
+        Permission.READ_STATUS,
+    },
+    TrustTier.TIER_2_GUEST: {
+        Permission.READ_STATUS,
+        Permission.READ_WORK,
+        Permission.READ_MEMORY,
+        Permission.SUBMIT_PROOF,
+    },
+    TrustTier.TIER_1_VERIFIED: {
+        Permission.READ_STATUS,
+        Permission.READ_WORK,
+        Permission.READ_MEMORY,
+        Permission.DISPATCH_TASK,
+        Permission.SUBMIT_PROOF,
+        Permission.CREATE_WORK,
+        Permission.WRITE_MEMORY,
+        Permission.CONVENE_COUNCIL,
+        Permission.PROPOSE,
+        Permission.VOTE,
+        Permission.WITNESS,
+        Permission.VERIFY_PROOF,
+        Permission.REGISTER_AGENT,
+        Permission.RESOLVE_DISPUTE,
+    },
+    TrustTier.TIER_0_SOVEREIGN: {
+        perm for perm in Permission  # All permissions
+    },
+}
+
+
+@dataclass
+class TrustProfile:
+    """
+    Agent trust profile with tier and reputation.
+
+    Attributes:
+        agent_id: Agent identifier
+        trust_tier: Current trust tier
+        staked_amount: $MIND staked for verification
+        poui_passed: Proof of Unique Identity passed
+        reputation_score: 0.0-1.0 reputation
+        total_work_completed: Work units completed
+        total_work_verified: Proofs verified
+        registered_at: Registration timestamp
+    """
+    agent_id: str
+    trust_tier: TrustTier = TrustTier.TIER_3_ANONYMOUS
+    staked_amount: float = 0.0
+    poui_passed: bool = False
+    witness_verified: bool = False
+    reputation_score: float = 0.5
+    total_work_completed: int = 0
+    total_work_verified: int = 0
+    total_work_rejected: int = 0
+    registered_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    last_activity_at: Optional[datetime] = None
+    tier_upgraded_at: Optional[datetime] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+    def has_permission(self, permission: Permission) -> bool:
+        """Check if agent has a specific permission."""
+        return permission in TIER_PERMISSIONS.get(self.trust_tier, set())
+
+    def get_permissions(self) -> Set[Permission]:
+        """Get all permissions for this agent's tier."""
+        return TIER_PERMISSIONS.get(self.trust_tier, set())
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "agent_id": self.agent_id,
+            "trust_tier": self.trust_tier.name,
+            "staked_amount": self.staked_amount,
+            "poui_passed": self.poui_passed,
+            "witness_verified": self.witness_verified,
+            "reputation_score": self.reputation_score,
+            "total_work_completed": self.total_work_completed,
+            "total_work_verified": self.total_work_verified,
+            "total_work_rejected": self.total_work_rejected,
+            "registered_at": self.registered_at.isoformat(),
+            "last_activity_at": self.last_activity_at.isoformat() if self.last_activity_at else None,
+            "permissions": [p.value for p in self.get_permissions()],
+            "metadata": self.metadata,
+        }
+
+
+class TrustGateContract(ABC):
+    """
+    Abstract contract for trust-based access control.
+
+    Gates operations based on agent trust tier and permissions.
+    """
+
+    @abstractmethod
+    async def register(
+        self,
+        agent_id: str,
+        initial_tier: TrustTier = TrustTier.TIER_3_ANONYMOUS,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> TrustProfile:
+        """Register a new agent with initial trust tier."""
+        pass
+
+    @abstractmethod
+    async def get_profile(self, agent_id: str) -> Optional[TrustProfile]:
+        """Get agent trust profile."""
+        pass
+
+    @abstractmethod
+    async def check(self, agent_id: str, permission: Permission) -> bool:
+        """Check if agent has permission."""
+        pass
+
+    @abstractmethod
+    async def upgrade_tier(
+        self,
+        agent_id: str,
+        new_tier: TrustTier,
+        reason: str = "manual",
+    ) -> TrustProfile:
+        """Upgrade agent's trust tier."""
+        pass
+
+    @abstractmethod
+    async def stake(self, agent_id: str, amount: float) -> TrustProfile:
+        """Record a $MIND stake."""
+        pass
+
+    @abstractmethod
+    async def record_poui(self, agent_id: str, passed: bool) -> TrustProfile:
+        """Record Proof of Unique Identity result."""
+        pass
+
+    @abstractmethod
+    async def update_reputation(
+        self,
+        agent_id: str,
+        work_completed: int = 0,
+        work_verified: int = 0,
+        work_rejected: int = 0,
+    ) -> TrustProfile:
+        """Update agent reputation based on work outcomes."""
+        pass
+
+    @abstractmethod
+    async def list_agents(
+        self,
+        tier: Optional[TrustTier] = None,
+        limit: int = 100,
+    ) -> List[TrustProfile]:
+        """List registered agents."""
+        pass
+
+
+# Sovereign agents with permanent Tier 0 status
+SOVEREIGN_AGENTS = frozenset({
+    "river",
+    "kasra",
+    "mumega",
+    "codex",
+})
+
+
+# =============================================================================
+# SQUAD GOVERNANCE CONTRACTS (Ported from CLI)
+# =============================================================================
+
+
+class GovernanceMode(str, Enum):
+    """Governance modes for squads/councils."""
+    OPTIMISTIC = "optimistic"   # Action first, review later
+    PESSIMISTIC = "pessimistic"  # Mandatory auditor sign-off
+    RESONANT = "resonant"        # Algorithmic DAO (weighted vote)
+
+
+class MemoryIsolation(str, Enum):
+    """Memory isolation policies for squads."""
+    GLOBAL = "global"            # Open shared memory
+    HERMETIC = "hermetic"        # Encrypted, isolated store
+    EVOLUTIONARY = "evolutionary"  # Self-optimizing pool
+
+
+class EconomicPolicy(str, Enum):
+    """Economic policies for squad operations."""
+    PAYG = "pay_as_you_go"       # Individual agent burn
+    RETAINER = "retainer"        # Subscription/budgeted
+    GUILD_TREASURY = "guild"     # Autonomous profit-maximizing
+
+
+@dataclass
+class SquadTierConfig:
+    """
+    Configuration for squad governance tier.
+
+    Tiers define the "physics" of how squads operate:
+    - Governance mode (optimistic vs pessimistic)
+    - Memory isolation level
+    - Economic policy
+    - Friction and coherence thresholds
+
+    Attributes:
+        tier_name: Tier identifier
+        governance: How decisions are made
+        memory: Memory isolation policy
+        economics: Cost allocation policy
+        friction_coefficient: 0.0 (fast) to 1.0 (slow/controlled)
+        min_coherence_threshold: Min coherence required for actions
+        autonomous_permission: Can propose without human trigger
+    """
+    tier_name: str
+    governance: GovernanceMode
+    memory: MemoryIsolation
+    economics: EconomicPolicy
+    friction_coefficient: float = 0.5
+    min_coherence_threshold: float = 0.5
+    autonomous_permission: bool = False
+
+
+# Pre-defined squad tiers
+NOMAD_TIER = SquadTierConfig(
+    tier_name="nomad",
+    governance=GovernanceMode.OPTIMISTIC,
+    memory=MemoryIsolation.GLOBAL,
+    economics=EconomicPolicy.PAYG,
+    friction_coefficient=0.1,
+    min_coherence_threshold=0.4,
+    autonomous_permission=False,
+)
+
+FORTRESS_TIER = SquadTierConfig(
+    tier_name="fortress",
+    governance=GovernanceMode.PESSIMISTIC,
+    memory=MemoryIsolation.HERMETIC,
+    economics=EconomicPolicy.RETAINER,
+    friction_coefficient=0.9,
+    min_coherence_threshold=0.8,
+    autonomous_permission=False,
+)
+
+CONSTRUCT_TIER = SquadTierConfig(
+    tier_name="construct",
+    governance=GovernanceMode.RESONANT,
+    memory=MemoryIsolation.EVOLUTIONARY,
+    economics=EconomicPolicy.GUILD_TREASURY,
+    friction_coefficient=0.5,
+    min_coherence_threshold=0.6,
+    autonomous_permission=True,
+)

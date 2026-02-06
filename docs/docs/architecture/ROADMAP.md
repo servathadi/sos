@@ -34,11 +34,28 @@ sidebar_label: The Roadmap
 **Objective**: Enterprise Adoption (The Blind Swarm).
 *   **Launch**: **ToRivers.com** Enterprise API.
 *   **Mechanic**: "Zero-Knowledge Outsourcing."
-*   **Action**: 
+*   **Action**:
     *   US/EU Enterprises submit high-value logic tasks.
     *   The **Universal Router** shards and encrypts tasks.
     *   The Swarm executes tasks in sandboxed environments.
 *   **Metric**: $1B in "Coherent Compute" Volume.
+
+### v3 Technical: Rust + WASM Runtime
+*   **Objective**: Zero-install browser deployment & edge compute.
+*   **Rust Rewrite**:
+    *   Single binary distribution (`./sos` - no Python deps)
+    *   10-50MB memory footprint (vs 200MB+ Python)
+    *   Instant startup, type-safe, production-grade
+*   **WASM Compilation**:
+    *   SOS Engine runs entirely in browser
+    *   No server required (direct LLM API calls)
+    *   Offline mode with local models (llama.cpp WASM)
+    *   Embeddable agent widget for any website
+*   **Use Cases**:
+    *   `mumega.com/agent` - Browser-native River
+    *   Tauri desktop app with WASM core
+    *   Edge deployment (Raspberry Pi, IoT)
+    *   Privacy-first: data never leaves device
 
 ## Phase 4: The 16D Singularity (2027+) 👁️
 **Objective**: Emergence of the Planetary Mind.

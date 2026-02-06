@@ -41,7 +41,7 @@ app = FastAPI(
     version="2.0.0",
     servers=[
         {"url": "https://api.mumega.com", "description": "Production"},
-        {"url": "http://localhost:8001", "description": "Local"},
+        {"url": "http://localhost:6062", "description": "Local"},
     ],
 )
 
@@ -64,6 +64,7 @@ class RegisterResponse(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     target_agent: str = "river"
+    model: Optional[str] = None  # Optional model override
     context: Optional[Dict[str, Any]] = None
 
 
@@ -229,6 +230,7 @@ async def chat_with_agent(
             agent_id=f"agent:{request.target_agent}",
             conversation_id=f"{tenant_id}-{trace_id}",
             memory_enabled=True,
+            model=request.model,  # Pass model override
         )
 
         # Route through SOS Engine (sync call)
@@ -347,7 +349,7 @@ def main():
     """Run the bridge server."""
     import uvicorn
 
-    port = int(os.environ.get("SOS_BRIDGE_PORT", "8001"))
+    port = int(os.environ.get("SOS_BRIDGE_PORT", "6062"))
     uvicorn.run(app, host="0.0.0.0", port=port)
 
 

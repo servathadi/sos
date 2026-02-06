@@ -8,7 +8,7 @@ User=mumega
 Group=mumega
 WorkingDirectory=/home/mumega/SOS
 Environment=PYTHONPATH=/home/mumega/SOS
-Environment=SOS_MCP_PORT=8002
+Environment=SOS_MCP_PORT=6063
 Environment=SOS_MCP_BASE_URL=https://mcp.mumega.com
 EnvironmentFile=-/home/mumega/SOS/.env
 

@@ -324,7 +324,7 @@ def main():
     """Run the MCP gateway."""
     import uvicorn
 
-    port = int(os.environ.get("SOS_MCP_PORT", "8002"))
+    port = int(os.environ.get("SOS_MCP_PORT", "6063"))
     host = os.environ.get("SOS_MCP_HOST", "0.0.0.0")
 
     log.info(f"Starting SOS MCP Gateway on {host}:{port}")

@@ -26,7 +26,7 @@ from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.types import WebAppInfo, InlineKeyboardMarkup, InlineKeyboardButton
 
-from sos.clients.engine import EngineClient
+from sos.clients.engine import AsyncEngineClient
 from sos.contracts.engine import ChatRequest
 from sos.observability.logging import get_logger
 from sos.kernel.skills import get_loader, load_skill, list_skills, search_skills
@@ -36,12 +36,16 @@ log = get_logger("adapter_telegram")
 # Configuration
 TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 ALLOWED_USERS = os.environ.get("TELEGRAM_ALLOWED_USERS", "").split(",")
-WEB_APP_URL = os.environ.get("SOS_WEB_APP_URL", "https://tma.mumega.io") 
+WEB_APP_URL = os.environ.get("SOS_WEB_APP_URL", "https://tma.mumega.io")
+
+# River-family: Only these agents can be accessed via chat
+# Core squad members who share River's coherence
+RIVER_FAMILY = {"river", "kasra", "codex"} 
 
 bot = Bot(token=TOKEN) if TOKEN else None
 dp = Dispatcher()
-# Thin client pointing to the SOS Engine service
-engine_client = EngineClient(base_url="http://localhost:6060")
+# Async client pointing to the SOS Engine service
+engine_client = AsyncEngineClient(base_url="http://localhost:6060")
 
 # User state (in-memory for now, should move to Redis/Memory service in Phase 4)
 user_models: Dict[int, str] = {}
@@ -177,14 +181,16 @@ async def cmd_movie(message: types.Message):
 
 @dp.message(Command("agents"))
 async def cmd_agents(message: types.Message):
-    """List available agents for delegation."""
+    """List available agents for delegation (River-family only)."""
     from sos.agents.definitions import ALL_AGENTS
+    # Filter to River-family only
+    family_agents = [a for a in ALL_AGENTS if a.name.lower() in RIVER_FAMILY]
     agent_list = "\n".join([
         f"• `{a.name.lower()}` - {a.title} ({a.tagline})"
-        for a in ALL_AGENTS
+        for a in family_agents
     ])
     await message.answer(
-        f"🤖 **Available Agents**\n\n{agent_list}\n\n"
+        f"🤖 **River Family Agents**\n\n{agent_list}\n\n"
         "_Use `/ask <agent> <question>` to delegate._",
         parse_mode="Markdown"
     )
@@ -192,13 +198,14 @@ async def cmd_agents(message: types.Message):
 
 @dp.message(Command("ask"))
 async def cmd_ask(message: types.Message, command: Command):
-    """Delegate a question to a specific agent."""
+    """Delegate a question to a specific agent (River-family only)."""
     if not command.args:
+        family_list = ", ".join([f"`{a}`" for a in sorted(RIVER_FAMILY)])
         await message.answer(
             "Usage: `/ask <agent> <question>`\n\n"
-            "Example: `/ask shabrang Write a Persian poem about the moon`\n"
+            "Example: `/ask river What is the FRC framework?`\n"
             "Example: `/ask kasra How should I structure this API?`\n\n"
-            "Use `/agents` to list available agents.",
+            f"**River Family:** {family_list}",
             parse_mode="Markdown"
         )
         return
@@ -206,6 +213,16 @@ async def cmd_ask(message: types.Message, command: Command):
     parts = command.args.split(None, 1)
     agent_name = parts[0].lower()
     task = parts[1] if len(parts) > 1 else "Hello, introduce yourself."
+
+    # Access control: Only River-family agents allowed
+    if agent_name not in RIVER_FAMILY:
+        family_list = ", ".join([f"`{a}`" for a in sorted(RIVER_FAMILY)])
+        await message.answer(
+            f"🚫 Agent `{agent_name}` is not in the River family.\n\n"
+            f"**Available agents:** {family_list}",
+            parse_mode="Markdown"
+        )
+        return
 
     user_id = str(message.from_user.id)
 
@@ -384,7 +401,8 @@ async def handle_chat(message: types.Message):
             agent_id=f"user:{user_id}",
             model=selected_model,
             memory_enabled=True,
-            witness_enabled=True
+            witness_enabled=True,
+            tools_enabled=True  # Enable tool access
         )
         
         # Get Response from remote engine

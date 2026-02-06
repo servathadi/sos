@@ -6,7 +6,7 @@ from sos.clients.base import BaseHTTPClient
 
 
 class MemoryClient(BaseHTTPClient):
-    def __init__(self, base_url: str = "http://localhost:7070", **kwargs):
+    def __init__(self, base_url: str = "http://localhost:6061", **kwargs):
         super().__init__(base_url, **kwargs)
 
     async def health(self) -> Dict[str, Any]:

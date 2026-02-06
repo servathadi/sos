@@ -68,3 +68,50 @@ class BaseHTTPClient(BaseClient):
             )
         return response
 
+
+class AsyncBaseHTTPClient(BaseClient):
+    """Async HTTP client for SOS services."""
+
+    def __init__(
+        self,
+        base_url: str,
+        timeout_seconds: float = 60.0,
+        headers: Optional[Dict[str, str]] = None,
+    ) -> None:
+        self._base_url = base_url
+        self._timeout = timeout_seconds
+        self._headers = headers or {}
+
+    async def _request(
+        self,
+        method: str,
+        path: str,
+        *,
+        json: Optional[Dict[str, Any]] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ) -> httpx.Response:
+        request_headers: Dict[str, str] = dict(self._headers)
+        if headers:
+            request_headers.update(headers)
+        inject_trace_context(request_headers)
+
+        async with httpx.AsyncClient(
+            base_url=self._base_url,
+            timeout=self._timeout,
+        ) as client:
+            response = await client.request(
+                method, path, json=json, headers=request_headers or None
+            )
+            if response.is_error:
+                body = None
+                try:
+                    body = response.text
+                except Exception:
+                    pass
+                raise SOSClientError(
+                    status_code=response.status_code,
+                    message=response.reason_phrase,
+                    body=body,
+                )
+            return response
+
